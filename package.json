@@ -1,6 +1,6 @@
 {
   "name": "pretext-pdf-mcp",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "MCP server for pretext-pdf — generate professional PDFs from JSON in Claude, Cursor, or any AI agent",
   "keywords": [
     "mcp",

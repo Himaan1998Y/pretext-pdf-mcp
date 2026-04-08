@@ -36,34 +36,79 @@ function createServer() {
   return server
 }
 
+function setCorsHeaders(res: import('node:http').ServerResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+}
+
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : null
 
 if (port) {
-  // HTTP mode — stateless, for hosted deployments (Smithery, VPS, etc.)
   const { createServer: createHttpServer } = await import('node:http')
   const { StreamableHTTPServerTransport } = await import('@modelcontextprotocol/sdk/server/streamableHttp.js')
+  const { render } = await import('pretext-pdf')
 
   const httpServer = createHttpServer(async (req, res) => {
     const url = new URL(req.url ?? '/', `http://localhost:${port}`)
+    setCorsHeaders(res)
 
+    // Preflight
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204)
+      res.end()
+      return
+    }
+
+    // Health check
     if (url.pathname === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ ok: true, service: 'pretext-pdf-mcp' }))
       return
     }
 
-    if (url.pathname !== '/mcp') {
-      res.writeHead(404)
-      res.end()
+    // REST demo API — POST /api/generate → returns PDF bytes
+    if (url.pathname === '/api/generate' && req.method === 'POST') {
+      const chunks: Buffer[] = []
+      for await (const chunk of req) chunks.push(chunk as Buffer)
+
+      if (Buffer.concat(chunks).length > 100_000) {
+        res.writeHead(413, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Request too large' }))
+        return
+      }
+
+      let body: { data?: unknown }
+      try {
+        body = JSON.parse(Buffer.concat(chunks).toString())
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Invalid JSON' }))
+        return
+      }
+
+      try {
+        const pdf = await render(body.data as Parameters<typeof render>[0])
+        res.writeHead(200, {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'inline; filename="output.pdf"',
+          'Content-Length': pdf.byteLength,
+        })
+        res.end(Buffer.from(pdf))
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        res.writeHead(400, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: msg }))
+      }
       return
     }
 
-    if (req.method === 'POST') {
+    // MCP endpoint — POST /mcp (stateless)
+    if (url.pathname === '/mcp' && req.method === 'POST') {
       const chunks: Buffer[] = []
       for await (const chunk of req) chunks.push(chunk as Buffer)
       const body = JSON.parse(Buffer.concat(chunks).toString())
 
-      // Stateless: fresh transport+server per request — no session tracking
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
       })
@@ -73,7 +118,7 @@ if (port) {
       return
     }
 
-    res.writeHead(405)
+    res.writeHead(404)
     res.end()
   })
 

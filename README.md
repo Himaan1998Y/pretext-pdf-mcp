@@ -4,6 +4,14 @@ MCP server for [pretext-pdf](https://github.com/Himaan1998Y/pretext-pdf) — gen
 
 No headless browser. No puppeteer. Pure Node.js with embedded fonts and precision text layout.
 
+## Live Demo
+
+**[▶ Open Playground](https://stackblitz.com/github/Himaan1998Y/pretext-pdf-mcp/tree/master/demo?file=index.html)** — edit JSON, click Generate, see a real PDF in seconds. No install.
+
+4 templates included: GST Invoice · Market Report · Resume/CV · Custom
+
+---
+
 ## Connect via Smithery
 
 The fastest way — no install, works instantly in any MCP-compatible agent:

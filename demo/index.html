@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pretext-pdf — Live Playground</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f0f12;
+    color: #e0e0e0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: #18181c;
+    border-bottom: 1px solid #2a2a32;
+    flex-shrink: 0;
+  }
+  .logo { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+  .logo span { color: #6366f1; }
+  .badge {
+    font-size: 11px;
+    background: #1e1e2e;
+    border: 1px solid #3a3a4a;
+    color: #888;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+  .header-links { margin-left: auto; display: flex; gap: 12px; align-items: center; }
+  .header-links a {
+    font-size: 12px;
+    color: #888;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .header-links a:hover { color: #fff; }
+  .npm-badge {
+    font-size: 11px;
+    background: #6366f1;
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 4px;
+    text-decoration: none !important;
+    font-weight: 600;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    padding: 0 16px;
+    background: #18181c;
+    border-bottom: 1px solid #2a2a32;
+    flex-shrink: 0;
+    gap: 2px;
+  }
+  .tab {
+    padding: 9px 16px;
+    font-size: 13px;
+    color: #666;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .tab:hover { color: #ccc; }
+  .tab.active { color: #fff; border-bottom-color: #6366f1; }
+  .tab-icon { margin-right: 6px; }
+
+  /* Split layout */
+  .workspace {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Editor pane */
+  .editor-pane {
+    width: 45%;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #2a2a32;
+  }
+  .editor-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    background: #18181c;
+    border-bottom: 1px solid #2a2a32;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .editor-label { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; flex: 1; }
+  .btn-generate {
+    padding: 5px 14px;
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-generate:hover { background: #4f51d9; }
+  .btn-generate:disabled { background: #3a3a5a; color: #666; cursor: not-allowed; }
+  .btn-generate .spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid transparent;
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    display: none;
+  }
+  .btn-generate.loading .spinner { display: block; }
+  .btn-generate.loading .btn-text { display: none; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  textarea {
+    flex: 1;
+    background: #0f0f12;
+    color: #c9d1d9;
+    border: none;
+    outline: none;
+    padding: 14px;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    resize: none;
+    tab-size: 2;
+  }
+  .error-bar {
+    background: #2d1b1b;
+    border-top: 1px solid #5a2020;
+    color: #f87171;
+    font-size: 11px;
+    padding: 6px 12px;
+    display: none;
+    font-family: monospace;
+  }
+  .error-bar.show { display: block; }
+
+  /* Preview pane */
+  .preview-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #1a1a20;
+    overflow: hidden;
+  }
+  .preview-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    background: #18181c;
+    border-bottom: 1px solid #2a2a32;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .preview-label { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; flex: 1; }
+  .btn-download {
+    padding: 5px 12px;
+    background: transparent;
+    color: #6366f1;
+    border: 1px solid #6366f1;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+    display: none;
+  }
+  .btn-download.show { display: inline-block; }
+  .btn-download:hover { background: #6366f1; color: #fff; }
+
+  iframe {
+    flex: 1;
+    border: none;
+    background: #fff;
+  }
+
+  .preview-placeholder {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #444;
+  }
+  .preview-placeholder.hidden { display: none; }
+  .preview-placeholder svg { opacity: 0.3; }
+  .preview-placeholder p { font-size: 13px; }
+
+  .loading-overlay {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    color: #666;
+  }
+  .loading-overlay.show { display: flex; }
+  .big-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid #2a2a32;
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .loading-overlay p { font-size: 13px; }
+
+  /* Resizer */
+  .resizer {
+    width: 4px;
+    background: #2a2a32;
+    cursor: col-resize;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .resizer:hover { background: #6366f1; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">pretext<span>-pdf</span></div>
+  <div class="badge">Live Playground</div>
+  <div class="header-links">
+    <a href="https://github.com/Himaan1998Y/pretext-pdf" target="_blank">GitHub</a>
+    <a href="https://www.npmjs.com/package/pretext-pdf" target="_blank">npm</a>
+    <a href="https://smithery.ai/server/himaan4149-kv55/pretext-pdf" target="_blank">Smithery</a>
+    <a href="https://www.npmjs.com/package/pretext-pdf" class="npm-badge" target="_blank">npm install pretext-pdf</a>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="invoice"><span class="tab-icon">🧾</span>Invoice (GST)</div>
+  <div class="tab" data-tab="report"><span class="tab-icon">📊</span>Market Report</div>
+  <div class="tab" data-tab="resume"><span class="tab-icon">👤</span>Resume / CV</div>
+  <div class="tab" data-tab="custom"><span class="tab-icon">✏️</span>Custom</div>
+</div>
+
+<div class="workspace">
+  <div class="editor-pane" id="editorPane">
+    <div class="editor-toolbar">
+      <span class="editor-label">PdfDocument JSON</span>
+      <button class="btn-generate" id="generateBtn" onclick="generatePdf()">
+        <div class="spinner"></div>
+        <span class="btn-text">▶ Generate PDF</span>
+      </button>
+    </div>
+    <textarea id="editor" spellcheck="false"></textarea>
+    <div class="error-bar" id="errorBar"></div>
+  </div>
+
+  <div class="resizer" id="resizer"></div>
+
+  <div class="preview-pane" id="previewPane">
+    <div class="preview-toolbar">
+      <span class="preview-label">PDF Preview</span>
+      <a class="btn-download" id="downloadBtn" download="output.pdf">⬇ Download</a>
+    </div>
+    <div class="preview-placeholder" id="placeholder">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14,2 14,8 20,8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10,9 9,9 8,9"/>
+      </svg>
+      <p>Click <strong>Generate PDF</strong> to preview</p>
+    </div>
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="big-spinner"></div>
+      <p>Rendering PDF…</p>
+    </div>
+    <iframe id="preview" style="display:none"></iframe>
+  </div>
+</div>
+
+<script>
+const API = 'https://mcp.57.129.125.171.sslip.io/api/generate'
+
+const TEMPLATES = {
+  invoice: {
+    pageSize: 'A4',
+    margins: { top: 50, bottom: 50, left: 56, right: 56 },
+    defaultFontSize: 10,
+    footer: { text: 'Page {{pageNumber}} of {{totalPages}}  ·  Generated by pretext-pdf', fontSize: 8, color: '#aaaaaa', align: 'center' },
+    content: [
+      { type: 'heading', level: 1, text: 'Antigravity Systems', fontSize: 22, color: '#1a1a2e', spaceAfter: 2 },
+      { type: 'paragraph', text: 'AI Infrastructure & Consulting  ·  Gurugram, Haryana  ·  GSTIN: 06AABCA1234Z1ZK', fontSize: 9, color: '#666666', spaceAfter: 2 },
+      { type: 'paragraph', text: 'hello@antigravity.dev  ·  +91 98765 43210  ·  antigravity.dev', fontSize: 9, color: '#0070f3', spaceAfter: 16 },
+      { type: 'hr', color: '#1a1a2e', thickness: 2, spaceBelow: 14 },
+      { type: 'heading', level: 3, text: 'INVOICE', fontSize: 18, color: '#1a1a2e', spaceAfter: 8 },
+      { type: 'table', columns: [{ width: '1*' }, { width: '1*' }], rows: [
+        { cells: [{ text: 'Invoice No.\nINV-2026-0087' }, { text: 'Bill To\nTata Consultancy Services Ltd.\nAttn: Finance, Powai, Mumbai 400076\nGSTIN: 27AAACT2727Q1ZW' }] },
+        { cells: [{ text: 'Invoice Date\nApril 8, 2026' }, { text: 'PO Reference\nTCS-PO-2026-4421' }] },
+        { cells: [{ text: 'Due Date\nMay 8, 2026 (30 days)' }, { text: 'Place of Supply\nMaharashtra (27)' }] },
+      ], borderColor: '#e8e8e8', borderWidth: 0.5, cellPaddingH: 10, cellPaddingV: 8, spaceAfter: 16 },
+      { type: 'heading', level: 3, text: 'Services Rendered', color: '#1a1a2e', spaceAfter: 6 },
+      { type: 'table',
+        columns: [{ width: '3*', align: 'left' }, { width: 80, align: 'center' }, { width: 90, align: 'right' }, { width: 90, align: 'right' }],
+        rows: [
+          { isHeader: true, cells: [{ text: 'Description', fontWeight: 700, color: '#ffffff' }, { text: 'Qty / Unit', fontWeight: 700, color: '#ffffff' }, { text: 'Rate (Rs.)', fontWeight: 700, color: '#ffffff' }, { text: 'Amount (Rs.)', fontWeight: 700, color: '#ffffff' }] },
+          { cells: [{ text: 'LLM Fine-tuning & Deployment Pipeline' }, { text: '1 project' }, { text: '2,50,000' }, { text: '2,50,000' }] },
+          { cells: [{ text: 'AI Strategy Workshop (2 days, 15 attendees)' }, { text: '2 days' }, { text: '75,000' }, { text: '1,50,000' }] },
+          { cells: [{ text: 'Dedicated ML Engineer (March 2026)' }, { text: '1 month' }, { text: '1,80,000' }, { text: '1,80,000' }] },
+          { cells: [{ text: 'Infrastructure Setup (GCP + Kubernetes)' }, { text: 'Fixed' }, { text: '80,000' }, { text: '80,000' }] },
+          { cells: [{ text: 'Monthly Support Retainer - April 2026' }, { text: '1 month' }, { text: '50,000' }, { text: '50,000' }] },
+        ],
+        headerBgColor: '#1a1a2e', borderColor: '#e0e0e0', borderWidth: 0.5, cellPaddingH: 8, cellPaddingV: 6, spaceAfter: 4 },
+      { type: 'hr', color: '#e0e0e0', thickness: 0.5, spaceBelow: 6 },
+      { type: 'paragraph', text: 'Subtotal:             Rs.8,10,000', align: 'right', spaceAfter: 3 },
+      { type: 'paragraph', text: 'IGST @ 18%:           Rs.1,45,800', align: 'right', color: '#555555', spaceAfter: 6 },
+      { type: 'hr', color: '#1a1a2e', thickness: 1, spaceBelow: 6 },
+      { type: 'paragraph', text: 'TOTAL DUE:            Rs.9,55,800', fontSize: 14, fontWeight: 700, color: '#1a1a2e', align: 'right', spaceAfter: 4 },
+      { type: 'paragraph', text: 'Amount in words: Rupees Nine Lakhs Fifty-Five Thousand Eight Hundred Only', fontSize: 9, color: '#666666', align: 'right', spaceAfter: 20 },
+      { type: 'hr', color: '#e8e8e8', spaceBelow: 10 },
+      { type: 'table', columns: [{ width: '1*' }, { width: '1*' }], rows: [
+        { cells: [{ text: 'Bank Details\nHDFC Bank, Cyber City Branch\nA/C: 5020 1234 5678\nIFSC: HDFC0001234\nUPI: pay@antigravity.dev' }, { text: 'Terms & Conditions\n- Payment due within 30 days\n- Late fee: 1.5% per month\n- Disputes within 7 days of receipt\n- Subject to Gurugram jurisdiction' }] },
+      ], borderColor: '#e8e8e8', borderWidth: 0.5, cellPaddingH: 10, cellPaddingV: 8 },
+    ]
+  },
+
+  report: {
+    pageSize: 'A4',
+    margins: { top: 60, bottom: 60, left: 64, right: 64 },
+    defaultFontSize: 11,
+    bookmarks: { minLevel: 1, maxLevel: 3 },
+    watermark: { text: 'CONFIDENTIAL', opacity: 0.04, rotation: -45, fontSize: 72 },
+    header: { text: 'Haryana Real Estate Market Report Q1 2026', fontSize: 8, color: '#999999', align: 'right' },
+    footer: { text: 'Page {{pageNumber}} of {{totalPages}}  ·  Antigravity Research  ·  Confidential', fontSize: 8, color: '#999999', align: 'center' },
+    content: [
+      { type: 'spacer', height: 40 },
+      { type: 'paragraph', text: 'MARKET RESEARCH REPORT', fontSize: 10, color: '#888888', letterSpacing: 3, smallCaps: true, align: 'center', spaceAfter: 8 },
+      { type: 'heading', level: 1, text: 'Haryana Real Estate\nMarket Analysis', fontSize: 28, color: '#1a1a2e', align: 'center', spaceAfter: 8, bookmark: false },
+      { type: 'paragraph', text: 'Q1 2026  ·  Residential & Commercial  ·  NCR Focus', fontSize: 12, color: '#555555', align: 'center', spaceAfter: 6 },
+      { type: 'hr', color: '#1a1a2e', thickness: 2, spaceBelow: 8 },
+      { type: 'paragraph', text: 'Published by Antigravity Research  ·  April 2026  ·  Not for redistribution', fontSize: 9, color: '#999999', align: 'center', spaceAfter: 40 },
+      { type: 'toc', title: 'Contents', showTitle: true, leader: '.', minLevel: 1, maxLevel: 2, fontSize: 11, spaceAfter: 20 },
+      { type: 'page-break' },
+      { type: 'heading', level: 1, text: 'Executive Summary', anchor: 'exec-summary', spaceAfter: 10 },
+      { type: 'paragraph', text: 'The Haryana residential real estate market demonstrated robust growth in Q1 2026, with transacted volumes rising 18% year-on-year across key micro-markets. Gurugram maintained its position as the dominant market, accounting for 41% of all registered transactions.', spaceAfter: 8 },
+      { type: 'table',
+        columns: [{ width: '2*' }, { width: 90, align: 'right' }, { width: 90, align: 'right' }, { width: 80, align: 'right' }],
+        rows: [
+          { isHeader: true, cells: [{ text: 'Market', fontWeight: 700 }, { text: 'Avg Rs./sqft', fontWeight: 700 }, { text: 'YoY Change', fontWeight: 700 }, { text: 'Vol (units)', fontWeight: 700 }] },
+          { cells: [{ text: 'Gurugram - DLF, Golf Course' }, { text: '18,200' }, { text: '+9.2%' }, { text: '1,840' }] },
+          { cells: [{ text: 'Gurugram - New Gurugram' }, { text: '9,800' }, { text: '+15.6%' }, { text: '3,210' }] },
+          { cells: [{ text: 'Gurugram - Sohna Road' }, { text: '8,400' }, { text: '+12.1%' }, { text: '2,100' }] },
+          { cells: [{ text: 'Sonipat - NH-44 Corridor' }, { text: '4,100' }, { text: '+19.2%' }, { text: '420' }] },
+        ],
+        headerBgColor: '#f0f4ff', borderColor: '#dddddd', borderWidth: 0.5, cellPaddingH: 8, cellPaddingV: 6, spaceAfter: 16 },
+      { type: 'heading', level: 1, text: 'Outlook & Recommendations', anchor: 'outlook', spaceAfter: 8 },
+      { type: 'list', style: 'ordered', items: [
+        { text: 'New Gurugram (Sectors 79-95): Infrastructure tailwind continues; expect 14-18% price appreciation.' },
+        { text: 'Sohna Road Extension: Land parcels now activating; early-mover opportunity for investors.' },
+        { text: 'Sonipat RRTS Corridor: Highest risk-adjusted return potential; 3-5 year horizon.' },
+      ], fontSize: 11, spaceAfter: 12 },
+      { type: 'blockquote', text: 'Key risk: Any upward revision to repo rates above 6.75% would materially impact EMI affordability for mid-segment buyers and could compress volumes by 10-15% over two quarters.', borderColor: '#e63946', color: '#333333' },
+    ]
+  },
+
+  resume: {
+    pageSize: 'A4',
+    margins: { top: 40, bottom: 40, left: 52, right: 52 },
+    defaultFontSize: 10,
+    content: [
+      { type: 'heading', level: 1, text: 'Himanshu Jain', fontSize: 24, color: '#1a1a2e', spaceAfter: 2 },
+      { type: 'paragraph', text: 'AI Systems Architect  ·  Entrepreneur  ·  Gurugram, India', fontSize: 11, color: '#555555', spaceAfter: 3 },
+      { type: 'rich-paragraph', fontSize: 10, spans: [
+        { text: 'himanshu@antigravity.dev', color: '#0070f3' },
+        { text: '  ·  github.com/Himaan1998Y', color: '#555555' },
+        { text: '  ·  +91 98765 43210', color: '#555555' },
+      ], spaceAfter: 6 },
+      { type: 'hr', color: '#1a1a2e', thickness: 1.5, spaceBelow: 10 },
+      { type: 'heading', level: 3, text: 'PROFILE', fontSize: 9, color: '#888888', letterSpacing: 2, smallCaps: true, spaceAfter: 4 },
+      { type: 'paragraph', text: 'Founder and AI architect with 4+ years building AI-powered products. Deep expertise in LLM integration, multi-agent orchestration, and data pipeline architecture.', spaceAfter: 10 },
+      { type: 'heading', level: 3, text: 'EXPERIENCE', fontSize: 9, color: '#888888', letterSpacing: 2, smallCaps: true, spaceAfter: 6 },
+      { type: 'rich-paragraph', fontSize: 11, spans: [{ text: 'Founder & CEO', fontWeight: 700 }, { text: '  ·  Antigravity Systems Pvt. Ltd.', color: '#333333' }, { text: '  ·  2022 – Present', color: '#888888' }], spaceAfter: 4 },
+      { type: 'list', style: 'unordered', fontSize: 10, spaceAfter: 8, items: [
+        { text: 'Built AI infrastructure platform serving 12+ enterprise clients; Rs.2.4Cr ARR' },
+        { text: 'Designed multi-agent content pipeline processing 500+ articles/month autonomously' },
+        { text: 'Open-sourced pretext-pdf — declarative PDF generator, 2K+ npm weekly downloads' },
+      ]},
+      { type: 'heading', level: 3, text: 'SKILLS & TECHNOLOGIES', fontSize: 9, color: '#888888', letterSpacing: 2, smallCaps: true, spaceAfter: 6 },
+      { type: 'table', columns: [{ width: 110 }, { width: '1*' }], rows: [
+        { cells: [{ text: 'AI / ML', fontWeight: 700 }, { text: 'LLM APIs, fine-tuning, RAG, vector DBs, multi-agent systems' }] },
+        { cells: [{ text: 'Backend', fontWeight: 700 }, { text: 'Node.js, TypeScript, Python, Supabase, Redis' }] },
+        { cells: [{ text: 'Frontend', fontWeight: 700 }, { text: 'Next.js 14, React, Tailwind CSS, Framer Motion' }] },
+        { cells: [{ text: 'Infrastructure', fontWeight: 700 }, { text: 'Docker, Coolify, OVH VPS, n8n, GitHub Actions CI/CD' }] },
+      ], borderColor: '#e8e8e8', borderWidth: 0.5, cellPaddingH: 8, cellPaddingV: 5, spaceAfter: 10 },
+      { type: 'heading', level: 3, text: 'EDUCATION', fontSize: 9, color: '#888888', letterSpacing: 2, smallCaps: true, spaceAfter: 6 },
+      { type: 'rich-paragraph', fontSize: 10, spans: [{ text: 'B.E. Mechanical Engineering + MBA', fontWeight: 700 }, { text: '  ·  2018–2022', color: '#888888' }], spaceAfter: 3 },
+      { type: 'paragraph', text: 'Thapar Institute of Engineering & Technology, Patiala  ·  GPA: 8.4/10', fontSize: 10, color: '#444444', spaceAfter: 10 },
+      { type: 'hr', color: '#e0e0e0', spaceBelow: 6 },
+      { type: 'paragraph', text: 'This CV was generated programmatically using pretext-pdf (npm: pretext-pdf)', fontSize: 8, color: '#aaaaaa', align: 'center' },
+    ]
+  },
+
+  custom: {
+    pageSize: 'A4',
+    margins: { top: 56, bottom: 56, left: 64, right: 64 },
+    defaultFontSize: 11,
+    footer: { text: 'Page {{pageNumber}} of {{totalPages}}', fontSize: 9, color: '#aaaaaa', align: 'center' },
+    content: [
+      { type: 'heading', level: 1, text: 'My Document', color: '#1a1a2e', spaceAfter: 8 },
+      { type: 'paragraph', text: 'Edit this JSON to build any PDF. Try changing text, colors, adding tables, lists, or elements.', spaceAfter: 12 },
+      { type: 'heading', level: 2, text: 'Feature Highlights', spaceAfter: 6 },
+      { type: 'list', style: 'unordered', items: [
+        { text: 'Knuth-Plass line breaking — same algorithm as LaTeX' },
+        { text: 'Professional typography with Inter font' },
+        { text: 'Tables, lists, images, code blocks, blockquotes' },
+        { text: 'Headers, footers, watermarks, bookmarks, TOC' },
+        { text: 'GST invoices, reports, resumes — all from JSON' },
+      ], spaceAfter: 12 },
+      { type: 'table',
+        columns: [{ width: '1*' }, { width: '1*' }, { width: '1*' }],
+        rows: [
+          { isHeader: true, cells: [{ text: 'Feature', fontWeight: 700 }, { text: 'pretext-pdf', fontWeight: 700 }, { text: 'pdfmake', fontWeight: 700 }] },
+          { cells: [{ text: 'Knuth-Plass hyphenation' }, { text: '✅' }, { text: '❌' }] },
+          { cells: [{ text: 'Pure Node.js (no Chrome)' }, { text: '✅' }, { text: '✅' }] },
+          { cells: [{ text: 'TypeScript types' }, { text: '✅' }, { text: 'Partial' }] },
+          { cells: [{ text: 'Encryption' }, { text: '✅' }, { text: '❌' }] },
+        ],
+        headerBgColor: '#1a1a2e', borderColor: '#e0e0e0', borderWidth: 0.5, cellPaddingH: 8, cellPaddingV: 6, spaceAfter: 12 },
+      { type: 'blockquote', text: 'Install: npm install pretext-pdf', borderColor: '#6366f1', color: '#333' },
+    ]
+  }
+}
+
+let activeTab = 'invoice'
+let currentBlobUrl = null
+
+const editor = document.getElementById('editor')
+const generateBtn = document.getElementById('generateBtn')
+const errorBar = document.getElementById('errorBar')
+const preview = document.getElementById('preview')
+const placeholder = document.getElementById('placeholder')
+const loadingOverlay = document.getElementById('loadingOverlay')
+const downloadBtn = document.getElementById('downloadBtn')
+
+function setTab(tab) {
+  activeTab = tab
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab))
+  editor.value = JSON.stringify(TEMPLATES[tab], null, 2)
+  errorBar.classList.remove('show')
+  generatePdf()
+}
+
+async function generatePdf() {
+  errorBar.classList.remove('show')
+
+  let data
+  try {
+    data = JSON.parse(editor.value)
+  } catch (e) {
+    errorBar.textContent = '⚠ JSON parse error: ' + e.message
+    errorBar.classList.add('show')
+    return
+  }
+
+  generateBtn.disabled = true
+  generateBtn.classList.add('loading')
+  placeholder.classList.add('hidden')
+  preview.style.display = 'none'
+  loadingOverlay.classList.add('show')
+  downloadBtn.classList.remove('show')
+  if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl)
+
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data })
+    })
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }))
+      throw new Error(err.error || res.statusText)
+    }
+
+    const blob = await res.blob()
+    currentBlobUrl = URL.createObjectURL(blob)
+    preview.src = currentBlobUrl
+    preview.style.display = 'block'
+    downloadBtn.href = currentBlobUrl
+    downloadBtn.download = activeTab + '.pdf'
+    downloadBtn.classList.add('show')
+  } catch (e) {
+    errorBar.textContent = '⚠ ' + e.message
+    errorBar.classList.add('show')
+    placeholder.classList.remove('hidden')
+  } finally {
+    generateBtn.disabled = false
+    generateBtn.classList.remove('loading')
+    loadingOverlay.classList.remove('show')
+  }
+}
+
+// Tab clicks
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => setTab(tab.dataset.tab))
+})
+
+// Ctrl+Enter to generate
+editor.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') generatePdf()
+})
+
+// Resizer
+const resizer = document.getElementById('resizer')
+const editorPane = document.getElementById('editorPane')
+let isResizing = false
+
+resizer.addEventListener('mousedown', e => {
+  isResizing = true
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+})
+document.addEventListener('mousemove', e => {
+  if (!isResizing) return
+  const workspace = document.querySelector('.workspace')
+  const rect = workspace.getBoundingClientRect()
+  const newWidth = Math.max(280, Math.min(e.clientX - rect.left, rect.width - 280))
+  editorPane.style.width = newWidth + 'px'
+})
+document.addEventListener('mouseup', () => {
+  isResizing = false
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+})
+
+// Init
+setTab('invoice')
+</script>
+</body>
+</html>
