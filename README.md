@@ -6,7 +6,9 @@ No headless browser. No puppeteer. Pure Node.js with embedded fonts and precisio
 
 ## Live Demo
 
-**[▶ Open Playground](https://stackblitz.com/github/Himaan1998Y/pretext-pdf-mcp/tree/master/demo?file=index.html)** — edit JSON, click Generate, see a real PDF in seconds. No install.
+**[▶ Open Live Demo](https://himaan1998y.github.io/pretext-pdf-mcp/)** — edit JSON, click Generate, see a real PDF in seconds. No install.
+
+**[▶ Open in StackBlitz](https://stackblitz.com/github/Himaan1998Y/pretext-pdf-mcp/tree/master/docs?file=index.html)** — fork and edit the playground code.
 
 4 templates included: GST Invoice · Market Report · Resume/CV · Custom
 
