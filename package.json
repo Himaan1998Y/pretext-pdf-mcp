@@ -1,11 +1,22 @@
 {
   "name": "pretext-pdf-mcp",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "MCP server for pretext-pdf — generate professional PDFs from JSON in Claude, Cursor, or any AI agent",
-  "keywords": ["mcp", "pdf", "pdf-generation", "invoice", "report", "claude", "ai-agent", "pretext"],
+  "keywords": [
+    "mcp",
+    "pdf",
+    "pdf-generation",
+    "invoice",
+    "report",
+    "claude",
+    "ai-agent",
+    "pretext"
+  ],
   "type": "module",
   "main": "./dist/index.js",
-  "bin": { "pretext-pdf-mcp": "./dist/index.js" },
+  "bin": {
+    "pretext-pdf-mcp": "./dist/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
@@ -20,10 +31,20 @@
     "tsx": "^4.0.0",
     "typescript": "^5.0.0"
   },
-  "files": ["dist/**/*", "smithery.yaml", "README.md", "LICENSE"],
-  "engines": { "node": ">=18.0.0" },
+  "files": [
+    "dist/**/*",
+    "smithery.yaml",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "license": "MIT",
   "author": "Himanshu Jain",
-  "repository": { "type": "git", "url": "https://github.com/Himaan1998Y/pretext-pdf-mcp" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Himaan1998Y/pretext-pdf-mcp"
+  },
   "homepage": "https://github.com/Himaan1998Y/pretext-pdf-mcp#readme"
 }

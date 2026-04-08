@@ -39,18 +39,13 @@ function createServer() {
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : null
 
 if (port) {
-  // HTTP mode — for hosted deployments (Smithery, VPS, etc.)
+  // HTTP mode — stateless, for hosted deployments (Smithery, VPS, etc.)
   const { createServer: createHttpServer } = await import('node:http')
   const { StreamableHTTPServerTransport } = await import('@modelcontextprotocol/sdk/server/streamableHttp.js')
-  const { randomUUID } = await import('node:crypto')
-
-  type HttpTransport = InstanceType<typeof StreamableHTTPServerTransport>
-  const sessions = new Map<string, HttpTransport>()
 
   const httpServer = createHttpServer(async (req, res) => {
     const url = new URL(req.url ?? '/', `http://localhost:${port}`)
 
-    // Health check
     if (url.pathname === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ ok: true, service: 'pretext-pdf-mcp' }))
@@ -64,47 +59,17 @@ if (port) {
     }
 
     if (req.method === 'POST') {
-      // Parse body
       const chunks: Buffer[] = []
       for await (const chunk of req) chunks.push(chunk as Buffer)
       const body = JSON.parse(Buffer.concat(chunks).toString())
 
-      // Check for existing session
-      const sessionId = req.headers['mcp-session-id'] as string | undefined
-
-      let transport: HttpTransport
-
-      if (sessionId && sessions.has(sessionId)) {
-        transport = sessions.get(sessionId)!
-      } else if (!sessionId && body?.method === 'initialize') {
-        // New session
-        transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => randomUUID(),
-        })
-        const server = createServer()
-        await server.connect(transport)
-        transport.onclose = () => {
-          if (transport.sessionId) sessions.delete(transport.sessionId)
-        }
-        sessions.set(transport.sessionId!, transport)
-      } else {
-        res.writeHead(400, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ error: 'Bad request: missing or invalid session' }))
-        return
-      }
-
+      // Stateless: fresh transport+server per request — no session tracking
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+      })
+      const server = createServer()
+      await server.connect(transport)
       await transport.handleRequest(req, res, body)
-      return
-    }
-
-    if (req.method === 'GET' || req.method === 'DELETE') {
-      const sessionId = req.headers['mcp-session-id'] as string | undefined
-      if (!sessionId || !sessions.has(sessionId)) {
-        res.writeHead(404)
-        res.end()
-        return
-      }
-      await sessions.get(sessionId)!.handleRequest(req, res)
       return
     }
 
