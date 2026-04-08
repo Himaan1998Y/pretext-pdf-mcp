@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "Live playground for pretext-pdf",
   "scripts": {
-    "start": "npx serve . --listen 3000 --no-clipboard",
-    "dev": "npx serve . --listen 3000 --no-clipboard"
+    "start": "serve . --listen 3000 --no-clipboard",
+    "dev": "serve . --listen 3000 --no-clipboard"
+  },
+  "devDependencies": {
+    "serve": "^14.0.0"
   }
 }
