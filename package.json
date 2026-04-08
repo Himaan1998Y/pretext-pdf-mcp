@@ -1,6 +1,6 @@
 {
   "name": "pretext-pdf-mcp",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "MCP server for pretext-pdf — generate professional PDFs from JSON in Claude, Cursor, or any AI agent",
   "keywords": [
     "mcp",
@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "pretext-pdf": "^0.4.0"
+    "pretext-pdf": "^0.4.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
