@@ -4,7 +4,21 @@ MCP server for [pretext-pdf](https://github.com/Himaan1998Y/pretext-pdf) — gen
 
 No headless browser. No puppeteer. Pure Node.js with embedded fonts and precision text layout.
 
-## Install
+## Connect via Smithery
+
+The fastest way — no install, works instantly in any MCP-compatible agent:
+
+```text
+https://pretext-pdf.run.tools
+```
+
+Or add via CLI:
+
+```bash
+smithery mcp add himaan4149-kv55/pretext-pdf
+```
+
+## Local Install (Claude Desktop / Cursor / Windsurf)
 
 ### Option 1: npx (no global install needed)
 
