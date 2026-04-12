@@ -1,6 +1,6 @@
 {
   "name": "pretext-pdf-mcp",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "MCP server for pretext-pdf — generate professional PDFs from JSON in Claude, Cursor, or any AI agent",
   "keywords": [
     "mcp",
@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "pretext-pdf": "^0.4.2"
+    "pretext-pdf": "^0.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -35,7 +35,8 @@
     "dist/**/*",
     "smithery.yaml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "engines": {
     "node": ">=18.0.0"
@@ -46,5 +47,8 @@
     "type": "git",
     "url": "https://github.com/Himaan1998Y/pretext-pdf-mcp"
   },
-  "homepage": "https://github.com/Himaan1998Y/pretext-pdf-mcp#readme"
+  "bugs": {
+    "url": "https://github.com/Himaan1998Y/pretext-pdf-mcp/issues"
+  },
+  "homepage": "https://himaan1998y.github.io/pretext-pdf-mcp/"
 }
