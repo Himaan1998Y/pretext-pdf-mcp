@@ -69,13 +69,17 @@ if (port) {
 
     // REST demo API — POST /api/generate → returns PDF bytes
     if (url.pathname === '/api/generate' && req.method === 'POST') {
+      const MAX_BODY = 100_000
       const chunks: Buffer[] = []
-      for await (const chunk of req) chunks.push(chunk as Buffer)
-
-      if (Buffer.concat(chunks).length > 100_000) {
-        res.writeHead(413, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ error: 'Request too large' }))
-        return
+      let totalSize = 0
+      for await (const chunk of req) {
+        totalSize += (chunk as Buffer).length
+        if (totalSize > MAX_BODY) {
+          res.writeHead(413, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Request too large' }))
+          return
+        }
+        chunks.push(chunk as Buffer)
       }
 
       let body: { data?: unknown }
@@ -105,8 +109,18 @@ if (port) {
 
     // MCP endpoint — POST /mcp (stateless)
     if (url.pathname === '/mcp' && req.method === 'POST') {
+      const MAX_MCP_BODY = 500_000
       const chunks: Buffer[] = []
-      for await (const chunk of req) chunks.push(chunk as Buffer)
+      let mcpSize = 0
+      for await (const chunk of req) {
+        mcpSize += (chunk as Buffer).length
+        if (mcpSize > MAX_MCP_BODY) {
+          res.writeHead(413, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Request too large' }))
+          return
+        }
+        chunks.push(chunk as Buffer)
+      }
       const body = JSON.parse(Buffer.concat(chunks).toString())
 
       const transport = new StreamableHTTPServerTransport({
