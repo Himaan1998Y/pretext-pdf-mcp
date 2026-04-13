@@ -59,3 +59,17 @@ jobs:
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  deploy:
+    needs: publish
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Restart VPS container to pick up new npm version
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 57.129.125.171
+          username: antigravity
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 49222
+          script: docker restart pretext-pdf-mcp
