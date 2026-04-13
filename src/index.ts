@@ -36,7 +36,7 @@ function validatePdfDocumentInput(data: unknown): asserts data is Record<string,
  * Returns true if error is a client error (400), false if server error (500).
  */
 function isClientError(err: unknown): boolean {
-  if (!(err instanceof PretextPdfError)) return true // Unknown errors → client error by default
+  if (!(err instanceof PretextPdfError)) return false // Unknown errors → server error (500)
   const clientErrors = [
     'VALIDATION_ERROR',
     'IMAGE_LOAD_FAILED',
@@ -53,7 +53,7 @@ function isClientError(err: unknown): boolean {
 
 function createServer() {
   const server = new Server(
-    { name: 'pretext-pdf', version: '1.0.7' },
+    { name: 'pretext-pdf', version: '1.0.8' },
     { capabilities: { tools: {} } }
   )
 
@@ -83,7 +83,12 @@ function setCorsHeaders(res: import('node:http').ServerResponse) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 }
 
-const port = process.env.PORT ? parseInt(process.env.PORT, 10) : null
+const rawPort = process.env.PORT
+const port = rawPort ? parseInt(rawPort, 10) : null
+if (port !== null && isNaN(port)) {
+  process.stderr.write(`[pretext-pdf-mcp] Error: PORT="${rawPort}" is not a valid port number\n`)
+  process.exit(1)
+}
 
 if (port) {
   const { createServer: createHttpServer } = await import('node:http')
@@ -171,7 +176,14 @@ if (port) {
         }
         chunks.push(chunk as Buffer)
       }
-      const body = JSON.parse(Buffer.concat(chunks).toString())
+      let body: unknown
+      try {
+        body = JSON.parse(Buffer.concat(chunks).toString())
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Invalid JSON body' }))
+        return
+      }
 
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,

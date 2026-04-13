@@ -28,7 +28,7 @@ export const generatePdfTool = {
     try {
       if (!args.document || typeof args.document !== 'object') {
         return {
-          content: [{ type: 'text', text: 'Error: document is required and must be an object' }],
+          content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'document is required and must be an object' }) }],
           isError: true,
         }
       }

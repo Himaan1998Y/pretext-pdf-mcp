@@ -1,7 +1,23 @@
 # Changelog
 
+<!-- markdownlint-disable MD024 -->
+
 All notable changes to pretext-pdf-mcp are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+---
+
+## [1.0.8] — 2026-04-13
+
+### Fixed
+
+- **Critical: /mcp endpoint crashed on malformed JSON** — Missing try-catch around `JSON.parse()` caused unhandled exceptions. Now returns HTTP 400 with `{error: "Invalid JSON body"}`, consistent with `/api/generate`.
+- **Critical: generate_pdf error response was plain text** — Validation error returned `{type: 'text', text: 'Error: ...'}` instead of JSON, breaking clients that expected `{success, error, message}`. Now consistent with all other tools.
+- **High: isClientError() misclassified internal errors as 400** — Non-PretextPdfError exceptions (TypeError, RangeError, etc.) were mapped to HTTP 400. Now correctly returns 500 for unexpected server errors; 400 only for known client-caused PretextPdfErrors.
+- **High: PORT env var NaN on invalid input** — `parseInt("abc")` returns NaN, causing server to bind to a random port silently. Now exits with a clear error message.
+- **Medium: GST calculation floating-point drift** — Accumulated rounding errors in per-rate GST totals (e.g. `18% of ₹250,000 = ₹45,000.00000000001`). All GST amounts now rounded to 2 decimal places at each step.
+- **Low: Dead `columns` variable in generate-report.ts** — Unused intermediate `columns` array was computed and suppressed with `void columns`. Removed entirely.
+- **Low: smithery.yaml version was stale** — Showed `1.0.1` instead of matching package.json. Now tracks current version.
 
 ---
 

@@ -101,7 +101,7 @@ function buildInvoiceDocument(input: InvoiceInput): any {
       }, 0)
     : 0
 
-  const grandTotal = subtotal + totalGst
+  const grandTotal = Math.round((subtotal + totalGst) * 100) / 100
 
   // Build totals section
   const totalsContent: any[] = [
@@ -120,7 +120,8 @@ function buildInvoiceDocument(input: InvoiceInput): any {
     for (const item of input.items) {
       if (!item.gst_rate) continue
       const amount = item.quantity * item.rate
-      rateGroups[item.gst_rate] = (rateGroups[item.gst_rate] ?? 0) + (amount * item.gst_rate) / 100
+      const gst = Math.round((amount * item.gst_rate) / 100 * 100) / 100
+      rateGroups[item.gst_rate] = Math.round(((rateGroups[item.gst_rate] ?? 0) + gst) * 100) / 100
     }
     for (const [rate, gstAmt] of Object.entries(rateGroups)) {
       totalsContent.push({

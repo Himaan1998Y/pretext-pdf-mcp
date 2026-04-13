@@ -111,8 +111,6 @@ function buildReportDocument(input: ReportInput): any {
 
     if (section.table) {
       const { headers, rows } = section.table
-      const columns = headers.map(() => ({ width: `${Math.floor(100 / headers.length)}%` as any }))
-      // Use equal fractional widths
       const fracColumns = headers.map(() => ({ width: '1*' as any, align: 'left' as const }))
 
       const headerRow = {
@@ -134,8 +132,6 @@ function buildReportDocument(input: ReportInput): any {
         cellPaddingV: 6,
         spaceAfter: 12,
       })
-      // Suppress unused variable warning
-      void columns
     }
 
     if (section.callout) {
