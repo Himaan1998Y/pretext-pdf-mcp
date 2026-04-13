@@ -5,14 +5,55 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
+import { PretextPdfError } from 'pretext-pdf'
 import { generatePdfTool } from './tools/generate-pdf.js'
 import { generateInvoiceTool } from './tools/generate-invoice.js'
 import { generateReportTool } from './tools/generate-report.js'
 import { listElementsTool } from './tools/list-elements.js'
 
+// ─── Input Validation ─────────────────────────────────────────────────────────
+/**
+ * Validate that body.data is a plain object (minimal type guard).
+ * Prevents obvious type errors before calling render().
+ */
+function validatePdfDocumentInput(data: unknown): asserts data is Record<string, unknown> {
+  if (data === null || data === undefined) {
+    throw new PretextPdfError(
+      'VALIDATION_ERROR',
+      'Request body.data is required and cannot be null or undefined'
+    )
+  }
+  if (typeof data !== 'object' || Array.isArray(data)) {
+    throw new PretextPdfError(
+      'VALIDATION_ERROR',
+      `Request body.data must be an object, received ${typeof data}`
+    )
+  }
+}
+
+/**
+ * Categorize pretext-pdf errors for HTTP status code determination.
+ * Returns true if error is a client error (400), false if server error (500).
+ */
+function isClientError(err: unknown): boolean {
+  if (!(err instanceof PretextPdfError)) return true // Unknown errors → client error by default
+  const clientErrors = [
+    'VALIDATION_ERROR',
+    'IMAGE_LOAD_FAILED',
+    'IMAGE_FORMAT_MISMATCH',
+    'SVG_LOAD_FAILED',
+    'PAGE_TOO_SMALL',
+    'FONT_NOT_LOADED',
+    'FONT_LOAD_FAILED',
+    'MONOSPACE_FONT_REQUIRED',
+    'ENCRYPTION_NOT_AVAILABLE',
+  ]
+  return clientErrors.includes(err.code)
+}
+
 function createServer() {
   const server = new Server(
-    { name: 'pretext-pdf', version: '1.0.0' },
+    { name: 'pretext-pdf', version: '1.0.7' },
     { capabilities: { tools: {} } }
   )
 
@@ -67,16 +108,18 @@ if (port) {
       return
     }
 
-    // REST demo API — POST /api/generate → returns PDF bytes
+    // REST API — POST /api/generate → returns PDF bytes
+    // Limit: 500 KB — accommodates PDFs with images, rich formatting, and new features (v0.5.1+)
+    // Validation: body.data must be a PdfDocument object before calling render()
     if (url.pathname === '/api/generate' && req.method === 'POST') {
-      const MAX_BODY = 100_000
+      const MAX_BODY = 500_000 // 500 KB — same as MCP endpoint, supports full feature set
       const chunks: Buffer[] = []
       let totalSize = 0
       for await (const chunk of req) {
         totalSize += (chunk as Buffer).length
         if (totalSize > MAX_BODY) {
           res.writeHead(413, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ error: 'Request too large' }))
+          res.end(JSON.stringify({ error: 'Request too large (max 500 KB)' }))
           return
         }
         chunks.push(chunk as Buffer)
@@ -87,12 +130,14 @@ if (port) {
         body = JSON.parse(Buffer.concat(chunks).toString())
       } catch {
         res.writeHead(400, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ error: 'Invalid JSON' }))
+        res.end(JSON.stringify({ error: 'Invalid JSON body' }))
         return
       }
 
       try {
-        const pdf = await render(body.data as Parameters<typeof render>[0])
+        // Validate input before calling render()
+        validatePdfDocumentInput(body.data)
+        const pdf = await render(body.data as unknown as Parameters<typeof render>[0])
         res.writeHead(200, {
           'Content-Type': 'application/pdf',
           'Content-Disposition': 'inline; filename="output.pdf"',
@@ -101,22 +146,27 @@ if (port) {
         res.end(Buffer.from(pdf))
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err)
-        res.writeHead(400, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ error: msg }))
+        const isClient = isClientError(err)
+        const statusCode = isClient ? 400 : 500
+        const errorCode = err instanceof PretextPdfError ? err.code : 'UNKNOWN_ERROR'
+        res.writeHead(statusCode, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: msg, code: errorCode }))
       }
       return
     }
 
-    // MCP endpoint — POST /mcp (stateless)
+    // MCP endpoint — POST /mcp (stateless, structured protocol)
+    // Limit: 500 KB — same as REST API, accommodates full feature set (images, rich formatting, etc.)
+    // Note: MCP protocol adds overhead (jsonrpc wrapper), so same limit across endpoints
     if (url.pathname === '/mcp' && req.method === 'POST') {
-      const MAX_MCP_BODY = 500_000
+      const MAX_MCP_BODY = 500_000 // 500 KB — consistent with /api/generate
       const chunks: Buffer[] = []
       let mcpSize = 0
       for await (const chunk of req) {
         mcpSize += (chunk as Buffer).length
         if (mcpSize > MAX_MCP_BODY) {
           res.writeHead(413, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ error: 'Request too large' }))
+          res.end(JSON.stringify({ error: 'Request too large (max 500 KB)' }))
           return
         }
         chunks.push(chunk as Buffer)
