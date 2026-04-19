@@ -46,7 +46,7 @@ function isClientError(err) {
     return clientErrors.includes(err.code);
 }
 function createServer() {
-    const server = new Server({ name: 'pretext-pdf', version: '1.1.0' }, { capabilities: { tools: {} } });
+    const server = new Server({ name: 'pretext-pdf', version: '1.1.2' }, { capabilities: { tools: {} } });
     const tools = [generatePdfTool, generateInvoiceTool, generateReportTool, generateFromMarkdownTool, listElementsTool];
     server.setRequestHandler(ListToolsRequestSchema, async () => ({
         tools: tools.map(t => t.schema),

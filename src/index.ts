@@ -59,7 +59,7 @@ function isClientError(err: unknown): boolean {
 
 function createServer() {
   const server = new Server(
-    { name: 'pretext-pdf', version: '1.1.0' },
+    { name: 'pretext-pdf', version: '1.1.2' },
     { capabilities: { tools: {} } }
   )
 
