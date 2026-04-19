@@ -15,7 +15,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "pretext-pdf-mcp": "./dist/index.js"
+    "pretext-pdf-mcp": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -45,7 +45,7 @@
   "author": "Himanshu Jain",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Himaan1998Y/pretext-pdf-mcp"
+    "url": "git+https://github.com/Himaan1998Y/pretext-pdf-mcp.git"
   },
   "bugs": {
     "url": "https://github.com/Himaan1998Y/pretext-pdf-mcp/issues"
