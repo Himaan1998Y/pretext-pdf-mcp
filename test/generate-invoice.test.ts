@@ -87,4 +87,39 @@ describe('generate_invoice tool', () => {
     assert.equal(parsed.success, false)
     assert.equal(parsed.error, 'VALIDATION_ERROR')
   })
+
+  it('returns VALIDATION_ERROR when items exceeds 500 entries', async () => {
+    const items = Array.from({ length: 501 }, (_, i) => ({ description: `Item ${i}`, quantity: 1, rate: 100 }))
+    const result = await generateInvoiceTool.handler({ from: BASE_FROM, to: BASE_TO, items })
+    assert.equal(result.isError, true)
+    const parsed = JSON.parse(result.content[0].text as string)
+    assert.equal(parsed.error, 'VALIDATION_ERROR')
+    assert.ok(parsed.message.includes('500'), 'message should mention the 500 limit')
+  })
+
+  it('returns VALIDATION_ERROR when upi_qr_data exceeds 2953 characters', async () => {
+    const result = await generateInvoiceTool.handler({
+      from: BASE_FROM,
+      to: BASE_TO,
+      items: [{ description: 'Service', quantity: 1, rate: 1000 }],
+      upi_qr_data: 'upi://pay?' + 'x'.repeat(2950),
+    })
+    assert.equal(result.isError, true)
+    const parsed = JSON.parse(result.content[0].text as string)
+    assert.equal(parsed.error, 'VALIDATION_ERROR')
+    assert.ok(parsed.message.includes('2953'))
+  })
+
+  it('generates an invoice with upi_qr_data (QR embedded in PDF)', async () => {
+    const result = await generateInvoiceTool.handler({
+      from: BASE_FROM,
+      to: BASE_TO,
+      items: [{ description: 'Consulting', quantity: 1, rate: 50000, gst_rate: 18 }],
+      upi_qr_data: 'upi://pay?pa=antigravity@hdfc&pn=Antigravity+Systems&am=59000',
+    })
+    assert.equal(result.isError, undefined)
+    const parsed = JSON.parse(result.content[0].text as string)
+    assert.equal(parsed.success, true)
+    assert.ok(parsed.size_bytes > 1000)
+  })
 })

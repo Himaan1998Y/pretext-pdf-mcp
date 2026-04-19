@@ -24,7 +24,7 @@ export const generatePdfTool = {
         try {
             if (!args.document || typeof args.document !== 'object') {
                 return {
-                    content: [{ type: 'text', text: 'Error: document is required and must be an object' }],
+                    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'document is required and must be an object' }) }],
                     isError: true,
                 };
             }
@@ -41,15 +41,16 @@ export const generatePdfTool = {
             };
         }
         catch (err) {
+            const e = err;
+            const message = err instanceof Error ? err.message : String(err);
+            if (!(err instanceof Error) || !e.code) {
+                process.stderr.write(JSON.stringify({ ts: new Date().toISOString(), level: 'error', tool: 'generate_pdf', msg: message }) + '\n');
+            }
             return {
                 content: [
                     {
                         type: 'text',
-                        text: JSON.stringify({
-                            success: false,
-                            error: err.code ?? 'UNKNOWN_ERROR',
-                            message: err.message,
-                        }),
+                        text: JSON.stringify({ success: false, error: e.code ?? 'UNKNOWN_ERROR', message }),
                     },
                 ],
                 isError: true,

@@ -9,7 +9,13 @@ import { PretextPdfError } from 'pretext-pdf'
 import { generatePdfTool } from './tools/generate-pdf.js'
 import { generateInvoiceTool } from './tools/generate-invoice.js'
 import { generateReportTool } from './tools/generate-report.js'
+import { generateFromMarkdownTool } from './tools/generate-from-markdown.js'
 import { listElementsTool } from './tools/list-elements.js'
+
+// ─── Structured logging ───────────────────────────────────────────────────────
+function log(level: 'info' | 'warn' | 'error', msg: string, meta?: Record<string, unknown>) {
+  process.stderr.write(JSON.stringify({ ts: new Date().toISOString(), level, msg, ...meta }) + '\n')
+}
 
 // ─── Input Validation ─────────────────────────────────────────────────────────
 /**
@@ -53,11 +59,11 @@ function isClientError(err: unknown): boolean {
 
 function createServer() {
   const server = new Server(
-    { name: 'pretext-pdf', version: '1.0.8' },
+    { name: 'pretext-pdf', version: '1.1.0' },
     { capabilities: { tools: {} } }
   )
 
-  const tools = [generatePdfTool, generateInvoiceTool, generateReportTool, listElementsTool]
+  const tools = [generatePdfTool, generateInvoiceTool, generateReportTool, generateFromMarkdownTool, listElementsTool]
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: tools.map(t => t.schema),
@@ -77,8 +83,19 @@ function createServer() {
   return server
 }
 
-function setCorsHeaders(res: import('node:http').ServerResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
+function setCorsHeaders(res: import('node:http').ServerResponse, requestOrigin?: string) {
+  const allowed = process.env.ALLOWED_ORIGINS
+  if (allowed && allowed !== '*') {
+    // Restrict to explicit whitelist (comma-separated)
+    const origins = allowed.split(',').map(o => o.trim())
+    if (requestOrigin && origins.includes(requestOrigin)) {
+      res.setHeader('Access-Control-Allow-Origin', requestOrigin)
+    }
+    res.setHeader('Vary', 'Origin')
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Vary', 'Origin')
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 }
@@ -97,7 +114,7 @@ if (port) {
 
   const httpServer = createHttpServer(async (req, res) => {
     const url = new URL(req.url ?? '/', `http://localhost:${port}`)
-    setCorsHeaders(res)
+    setCorsHeaders(res, req.headers['origin'] as string | undefined)
 
     // Preflight
     if (req.method === 'OPTIONS') {
@@ -123,6 +140,7 @@ if (port) {
       for await (const chunk of req) {
         totalSize += (chunk as Buffer).length
         if (totalSize > MAX_BODY) {
+          log('warn', 'request too large', { endpoint: '/api/generate', size_bytes: totalSize })
           res.writeHead(413, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: 'Request too large (max 500 KB)' }))
           return
@@ -134,6 +152,7 @@ if (port) {
       try {
         body = JSON.parse(Buffer.concat(chunks).toString())
       } catch {
+        log('warn', 'invalid json body', { endpoint: '/api/generate' })
         res.writeHead(400, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: 'Invalid JSON body' }))
         return
@@ -143,6 +162,7 @@ if (port) {
         // Validate input before calling render()
         validatePdfDocumentInput(body.data)
         const pdf = await render(body.data as unknown as Parameters<typeof render>[0])
+        log('info', 'pdf generated', { endpoint: '/api/generate', size_bytes: pdf.byteLength })
         res.writeHead(200, {
           'Content-Type': 'application/pdf',
           'Content-Disposition': 'inline; filename="output.pdf"',
@@ -154,6 +174,7 @@ if (port) {
         const isClient = isClientError(err)
         const statusCode = isClient ? 400 : 500
         const errorCode = err instanceof PretextPdfError ? err.code : 'UNKNOWN_ERROR'
+        log(isClient ? 'warn' : 'error', 'pdf generation failed', { endpoint: '/api/generate', code: errorCode, statusCode })
         res.writeHead(statusCode, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: msg, code: errorCode }))
       }
@@ -170,6 +191,7 @@ if (port) {
       for await (const chunk of req) {
         mcpSize += (chunk as Buffer).length
         if (mcpSize > MAX_MCP_BODY) {
+          log('warn', 'request too large', { endpoint: '/mcp', size_bytes: mcpSize })
           res.writeHead(413, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: 'Request too large (max 500 KB)' }))
           return
@@ -180,11 +202,13 @@ if (port) {
       try {
         body = JSON.parse(Buffer.concat(chunks).toString())
       } catch {
+        log('warn', 'invalid json body', { endpoint: '/mcp' })
         res.writeHead(400, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: 'Invalid JSON body' }))
         return
       }
 
+      log('info', 'mcp request received', { endpoint: '/mcp', size_bytes: mcpSize })
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
       })

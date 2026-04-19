@@ -250,6 +250,41 @@ export const generateReportTool = {
           isError: true,
         }
       }
+      for (let i = 0; i < sections.length; i++) {
+        const s = sections[i]
+        if (!s || typeof s !== 'object') {
+          return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}] must be an object` }) }], isError: true }
+        }
+        if (typeof s.heading !== 'string' || s.heading.trim() === '') {
+          return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].heading is required and must be a non-empty string` }) }], isError: true }
+        }
+        if (typeof s.body !== 'string') {
+          return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].body is required and must be a string` }) }], isError: true }
+        }
+        if (s.table !== undefined) {
+          if (typeof s.table !== 'object' || Array.isArray(s.table)) {
+            return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].table must be an object` }) }], isError: true }
+          }
+          if (!Array.isArray((s.table as any).headers)) {
+            return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].table.headers must be an array of strings` }) }], isError: true }
+          }
+          if (!Array.isArray((s.table as any).rows) || !(s.table as any).rows.every((r: unknown) => Array.isArray(r))) {
+            return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].table.rows must be an array of arrays` }) }], isError: true }
+          }
+        }
+        if (s.callout !== undefined) {
+          if (typeof s.callout !== 'object' || Array.isArray(s.callout)) {
+            return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].callout must be an object` }) }], isError: true }
+          }
+          if (typeof (s.callout as any).text !== 'string' || (s.callout as any).text.trim() === '') {
+            return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].callout.text is required and must be a non-empty string` }) }], isError: true }
+          }
+          const VALID_CALLOUT_STYLES = ['info', 'warning', 'tip', 'note']
+          if ((s.callout as any).style !== undefined && !VALID_CALLOUT_STYLES.includes((s.callout as any).style)) {
+            return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].callout.style must be one of: info, warning, tip, note` }) }], isError: true }
+          }
+        }
+      }
 
       const input = args as unknown as ReportInput
       const doc = buildReportDocument(input)
@@ -264,16 +299,17 @@ export const generateReportTool = {
           },
         ],
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const e = err as { code?: string; message?: string }
+      const message = err instanceof Error ? err.message : String(err)
+      if (!(err instanceof Error) || !e.code) {
+        process.stderr.write(JSON.stringify({ ts: new Date().toISOString(), level: 'error', tool: 'generate_report', msg: message }) + '\n')
+      }
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify({
-              success: false,
-              error: err.code ?? 'UNKNOWN_ERROR',
-              message: err.message,
-            }),
+            text: JSON.stringify({ success: false, error: e.code ?? 'UNKNOWN_ERROR', message }),
           },
         ],
         isError: true,

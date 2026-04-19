@@ -43,16 +43,17 @@ export const generatePdfTool = {
           },
         ],
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const e = err as { code?: string; message?: string }
+      const message = err instanceof Error ? err.message : String(err)
+      if (!(err instanceof Error) || !e.code) {
+        process.stderr.write(JSON.stringify({ ts: new Date().toISOString(), level: 'error', tool: 'generate_pdf', msg: message }) + '\n')
+      }
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify({
-              success: false,
-              error: err.code ?? 'UNKNOWN_ERROR',
-              message: err.message,
-            }),
+            text: JSON.stringify({ success: false, error: e.code ?? 'UNKNOWN_ERROR', message }),
           },
         ],
         isError: true,

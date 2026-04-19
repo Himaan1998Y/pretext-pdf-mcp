@@ -6,7 +6,12 @@ import { PretextPdfError } from 'pretext-pdf';
 import { generatePdfTool } from './tools/generate-pdf.js';
 import { generateInvoiceTool } from './tools/generate-invoice.js';
 import { generateReportTool } from './tools/generate-report.js';
+import { generateFromMarkdownTool } from './tools/generate-from-markdown.js';
 import { listElementsTool } from './tools/list-elements.js';
+// ─── Structured logging ───────────────────────────────────────────────────────
+function log(level, msg, meta) {
+    process.stderr.write(JSON.stringify({ ts: new Date().toISOString(), level, msg, ...meta }) + '\n');
+}
 // ─── Input Validation ─────────────────────────────────────────────────────────
 /**
  * Validate that body.data is a plain object (minimal type guard).
@@ -26,7 +31,7 @@ function validatePdfDocumentInput(data) {
  */
 function isClientError(err) {
     if (!(err instanceof PretextPdfError))
-        return true; // Unknown errors → client error by default
+        return false; // Unknown errors → server error (500)
     const clientErrors = [
         'VALIDATION_ERROR',
         'IMAGE_LOAD_FAILED',
@@ -41,8 +46,8 @@ function isClientError(err) {
     return clientErrors.includes(err.code);
 }
 function createServer() {
-    const server = new Server({ name: 'pretext-pdf', version: '1.0.7' }, { capabilities: { tools: {} } });
-    const tools = [generatePdfTool, generateInvoiceTool, generateReportTool, listElementsTool];
+    const server = new Server({ name: 'pretext-pdf', version: '1.1.0' }, { capabilities: { tools: {} } });
+    const tools = [generatePdfTool, generateInvoiceTool, generateReportTool, generateFromMarkdownTool, listElementsTool];
     server.setRequestHandler(ListToolsRequestSchema, async () => ({
         tools: tools.map(t => t.schema),
     }));
@@ -58,19 +63,36 @@ function createServer() {
     });
     return server;
 }
-function setCorsHeaders(res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+function setCorsHeaders(res, requestOrigin) {
+    const allowed = process.env.ALLOWED_ORIGINS;
+    if (allowed && allowed !== '*') {
+        // Restrict to explicit whitelist (comma-separated)
+        const origins = allowed.split(',').map(o => o.trim());
+        if (requestOrigin && origins.includes(requestOrigin)) {
+            res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+        }
+        res.setHeader('Vary', 'Origin');
+    }
+    else {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Vary', 'Origin');
+    }
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
-const port = process.env.PORT ? parseInt(process.env.PORT, 10) : null;
+const rawPort = process.env.PORT;
+const port = rawPort ? parseInt(rawPort, 10) : null;
+if (port !== null && isNaN(port)) {
+    process.stderr.write(`[pretext-pdf-mcp] Error: PORT="${rawPort}" is not a valid port number\n`);
+    process.exit(1);
+}
 if (port) {
     const { createServer: createHttpServer } = await import('node:http');
     const { StreamableHTTPServerTransport } = await import('@modelcontextprotocol/sdk/server/streamableHttp.js');
     const { render } = await import('pretext-pdf');
     const httpServer = createHttpServer(async (req, res) => {
         const url = new URL(req.url ?? '/', `http://localhost:${port}`);
-        setCorsHeaders(res);
+        setCorsHeaders(res, req.headers['origin']);
         // Preflight
         if (req.method === 'OPTIONS') {
             res.writeHead(204);
@@ -93,6 +115,7 @@ if (port) {
             for await (const chunk of req) {
                 totalSize += chunk.length;
                 if (totalSize > MAX_BODY) {
+                    log('warn', 'request too large', { endpoint: '/api/generate', size_bytes: totalSize });
                     res.writeHead(413, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ error: 'Request too large (max 500 KB)' }));
                     return;
@@ -104,6 +127,7 @@ if (port) {
                 body = JSON.parse(Buffer.concat(chunks).toString());
             }
             catch {
+                log('warn', 'invalid json body', { endpoint: '/api/generate' });
                 res.writeHead(400, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: 'Invalid JSON body' }));
                 return;
@@ -112,6 +136,7 @@ if (port) {
                 // Validate input before calling render()
                 validatePdfDocumentInput(body.data);
                 const pdf = await render(body.data);
+                log('info', 'pdf generated', { endpoint: '/api/generate', size_bytes: pdf.byteLength });
                 res.writeHead(200, {
                     'Content-Type': 'application/pdf',
                     'Content-Disposition': 'inline; filename="output.pdf"',
@@ -124,6 +149,7 @@ if (port) {
                 const isClient = isClientError(err);
                 const statusCode = isClient ? 400 : 500;
                 const errorCode = err instanceof PretextPdfError ? err.code : 'UNKNOWN_ERROR';
+                log(isClient ? 'warn' : 'error', 'pdf generation failed', { endpoint: '/api/generate', code: errorCode, statusCode });
                 res.writeHead(statusCode, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: msg, code: errorCode }));
             }
@@ -139,13 +165,24 @@ if (port) {
             for await (const chunk of req) {
                 mcpSize += chunk.length;
                 if (mcpSize > MAX_MCP_BODY) {
+                    log('warn', 'request too large', { endpoint: '/mcp', size_bytes: mcpSize });
                     res.writeHead(413, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ error: 'Request too large (max 500 KB)' }));
                     return;
                 }
                 chunks.push(chunk);
             }
-            const body = JSON.parse(Buffer.concat(chunks).toString());
+            let body;
+            try {
+                body = JSON.parse(Buffer.concat(chunks).toString());
+            }
+            catch {
+                log('warn', 'invalid json body', { endpoint: '/mcp' });
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+                return;
+            }
+            log('info', 'mcp request received', { endpoint: '/mcp', size_bytes: mcpSize });
             const transport = new StreamableHTTPServerTransport({
                 sessionIdGenerator: undefined,
             });
