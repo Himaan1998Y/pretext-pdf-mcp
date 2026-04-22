@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, } from '@modelcontextprotocol/sdk/types.js';
@@ -8,6 +11,12 @@ import { generateInvoiceTool } from './tools/generate-invoice.js';
 import { generateReportTool } from './tools/generate-report.js';
 import { generateFromMarkdownTool } from './tools/generate-from-markdown.js';
 import { listElementsTool } from './tools/list-elements.js';
+// Read version from package.json so the server identity tracks the release —
+// hardcoding a version string here was the drift bug that left /mcp announcing
+// 1.1.2 while package.json said 1.2.0. Root fix: single source of truth.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(resolve(__dirname, '..', 'package.json'), 'utf8'));
+const SERVER_VERSION = pkg.version;
 // ─── Structured logging ───────────────────────────────────────────────────────
 function log(level, msg, meta) {
     process.stderr.write(JSON.stringify({ ts: new Date().toISOString(), level, msg, ...meta }) + '\n');
@@ -46,7 +55,7 @@ function isClientError(err) {
     return clientErrors.includes(err.code);
 }
 function createServer() {
-    const server = new Server({ name: 'pretext-pdf', version: '1.1.2' }, { capabilities: { tools: {} } });
+    const server = new Server({ name: 'pretext-pdf', version: SERVER_VERSION }, { capabilities: { tools: {} } });
     const tools = [generatePdfTool, generateInvoiceTool, generateReportTool, generateFromMarkdownTool, listElementsTool];
     server.setRequestHandler(ListToolsRequestSchema, async () => ({
         tools: tools.map(t => t.schema),
