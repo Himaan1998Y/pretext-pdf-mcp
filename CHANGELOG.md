@@ -13,11 +13,12 @@ Core-sync release. Brings the MCP wrapper forward from the outdated `pretext-pdf
 
 ### Changed
 
-- **Bumped `pretext-pdf` dependency from `^0.8.0` to `^0.9.2`**. This surfaces every core improvement shipped in `pretext-pdf` 0.8.1 through 0.9.2 to MCP consumers, including:
+- **Bumped `pretext-pdf` dependency from `^0.8.0` to `^0.9.2`**. Key improvements now available to MCP consumers:
   - Rich-paragraph leading-space preservation after `\n` hard breaks (core 0.9.1)
   - Callout title-row protection on mid-page splits (core 0.9.1)
   - Producer-validator contract for measured blocks (core 0.9.1)
   - SSRF guard on image URLs, markdown nesting caps (core 0.8.3)
+  - Rich-paragraph whitespace-collapse fix, sentinel-char measurement (core 0.8.2)
   - Browser-safe imports (core 0.8.1)
   - CJK opening-bracket wrap fix + native `letterSpacing` from `@chenglou/pretext@0.0.6` (core 0.9.2)
 

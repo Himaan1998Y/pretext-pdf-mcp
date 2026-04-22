@@ -36,6 +36,12 @@ jobs:
       - name: Tests
         run: npm test
 
+  ci-ok:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "All CI checks passed"
+
   publish:
     needs: test
     runs-on: ubuntu-latest

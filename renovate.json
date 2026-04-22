@@ -18,7 +18,7 @@
       "groupName": "devDependencies",
       "automerge": true,
       "automergeType": "branch",
-      "requiredStatusChecks": ["CI"]
+      "requiredStatusChecks": ["CI / ci-ok"]
     },
     {
       "description": "pretext-pdf core — surface bumps loudly; this wrapper drifting from core was the whole reason we built this bot",
