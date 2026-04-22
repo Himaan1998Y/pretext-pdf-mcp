@@ -1,6 +1,5 @@
 name: pretext-pdf
 description: "Generate professional PDFs from structured JSON. Supports invoices (with GST), reports, tables, forms, encryption, and more. No headless browser — pure Node.js."
-version: "1.0.8"
 startCommand:
   type: stdio
   command: npx
