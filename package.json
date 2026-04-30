@@ -25,8 +25,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "marked": "^18.0.2",
-    "pretext-pdf": "^0.9.3",
-    "qrcode": "^1.5.4"
+    "pretext-pdf": "^0.9.3"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
