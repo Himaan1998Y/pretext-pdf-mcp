@@ -18,22 +18,25 @@ interface InvoiceItem {
   gst_rate?: number
 }
 
+const SUPPORTED_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'] as const
+type SupportedCurrency = typeof SUPPORTED_CURRENCIES[number]
+
+const CURRENCY_SYMBOLS: Record<SupportedCurrency, string> = {
+  INR: '₹',
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+}
+
 interface InvoiceInput {
   from: InvoiceParty
   to: InvoiceParty
   invoice_number?: string
   date?: string
   due_date?: string
-  currency?: 'INR' | 'USD' | 'EUR' | 'GBP'
+  currency?: SupportedCurrency
   items: InvoiceItem[]
   notes?: string
-}
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  INR: '₹',
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
 }
 
 function formatMoney(amount: number, symbol: string): string {
@@ -262,7 +265,7 @@ export const generateInvoiceTool = {
   schema: {
     name: 'generate_invoice',
     description:
-      'Generate a professional invoice PDF. Accepts structured invoice data (from/to parties, line items, GST). Returns base64-encoded PDF. Supports INR/USD/EUR/GBP currencies. GST (IGST) is auto-calculated when gst_rate is set on items.',
+      `Generate a professional invoice PDF. Accepts structured invoice data (from/to parties, line items, GST). Returns base64-encoded PDF. Supports ${SUPPORTED_CURRENCIES.join('/')} currencies. GST (IGST) is auto-calculated when gst_rate is set on items.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -295,8 +298,8 @@ export const generateInvoiceTool = {
         due_date: { type: 'string', description: 'Payment due date ISO format.' },
         currency: {
           type: 'string',
-          enum: ['INR', 'USD', 'EUR', 'GBP'],
-          description: 'Currency. Default: INR',
+          enum: [...SUPPORTED_CURRENCIES],
+          description: `Currency. Default: INR`,
         },
         items: {
           type: 'array',
@@ -341,11 +344,11 @@ export const generateInvoiceTool = {
         }
       }
 
-      // C3: validate currency symbol exists before buildInvoiceDocument uses it
-      const currency = (args.currency as string | undefined) ?? 'INR'
-      if (!CURRENCY_SYMBOLS[currency]) {
+      // C3: validate currency before buildInvoiceDocument uses it
+      const rawCurrency = (args.currency as string | undefined) ?? 'INR'
+      if (!(SUPPORTED_CURRENCIES as readonly string[]).includes(rawCurrency)) {
         return {
-          content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `Unsupported currency: ${currency}. Supported: INR, USD, EUR, GBP` }) }],
+          content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `Unsupported currency: ${rawCurrency}. Supported: ${SUPPORTED_CURRENCIES.join(', ')}` }) }],
           isError: true,
         }
       }
