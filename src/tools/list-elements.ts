@@ -1,3 +1,5 @@
+import { ELEMENT_TYPES } from 'pretext-pdf'
+
 const ELEMENTS_REFERENCE = `# pretext-pdf Element Types Reference
 
 ## paragraph
@@ -80,6 +82,14 @@ Example: \`{ type: "page-break" }\`
 - \`metadata\`: \`{ title, author, subject, keywords, language }\`
 - \`hyphenation\`: \`{ language: 'en-us' }\`
 `
+
+// Drift guard: warn at startup if core added an element type not yet documented here.
+// Catches schema drift before it silently reaches users.
+const _coveredTypes = ELEMENTS_REFERENCE.match(/^## (\S+)/gm)?.map((h: string) => h.slice(3)) ?? []
+const _missing = (ELEMENT_TYPES as readonly string[]).filter(t => !_coveredTypes.includes(t))
+if (_missing.length > 0) {
+  process.stderr.write(`[list-elements] WARNING: ELEMENTS_REFERENCE missing docs for: ${_missing.join(', ')}\n`)
+}
 
 export const listElementsTool = {
   schema: {
