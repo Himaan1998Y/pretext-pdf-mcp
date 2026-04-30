@@ -8,7 +8,8 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
-import { PretextPdfError } from 'pretext-pdf'
+import { PretextPdfError, validate } from 'pretext-pdf'
+import type { PdfDocument } from 'pretext-pdf'
 import { generatePdfTool } from './tools/generate-pdf.js'
 import { generateInvoiceTool } from './tools/generate-invoice.js'
 import { generateReportTool } from './tools/generate-report.js'
@@ -170,8 +171,10 @@ if (port) {
       }
 
       try {
-        // Validate input before calling render()
+        // Null/type guard: ensure body.data is an object before schema validation
         validatePdfDocumentInput(body.data)
+        // Schema validation: catches all element-level errors before the render pipeline starts
+        validate(body.data as unknown as PdfDocument)
         const pdf = await render(body.data as unknown as Parameters<typeof render>[0])
         log('info', 'pdf generated', { endpoint: '/api/generate', size_bytes: pdf.byteLength })
         res.writeHead(200, {
