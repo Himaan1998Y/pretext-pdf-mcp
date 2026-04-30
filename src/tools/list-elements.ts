@@ -28,8 +28,8 @@ Embed PNG/JPG image. Key props: \`src\` (absolute file path or Uint8Array, requi
 Example: \`{ type: "image", src: "/abs/path/to/logo.png", width: 120, align: "center" }\`
 
 ## svg
-Inline SVG vector graphic. Key props: \`content\` (SVG markup string, required), \`width\` (pt), \`height\` (pt), \`align\`, \`spaceAfter\`.
-Example: \`{ type: "svg", content: "<svg viewBox='0 0 100 100'><circle cx='50' cy='50' r='40'/></svg>", width: 100, height: 100 }\`
+Inline SVG vector graphic. Either \`svg\` (inline markup string) or \`src\` (absolute file path or https:// URL) is required. Key props: \`svg\` (SVG markup string), \`src\` (absolute path or URL), \`width\` (pt), \`height\` (pt, auto from viewBox if omitted), \`align\`, \`spaceBefore\`, \`spaceAfter\`.
+Example: \`{ type: "svg", svg: "<svg viewBox='0 0 100 100'><circle cx='50' cy='50' r='40'/></svg>", width: 100, height: 100 }\`
 
 ## code
 Monospace code block with optional syntax label. Key props: \`code\` (required), \`language\` (label only, no syntax highlighting), \`fontSize\`, \`bgColor\`, \`color\`, \`spaceAfter\`.
