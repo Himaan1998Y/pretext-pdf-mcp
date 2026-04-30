@@ -14,6 +14,7 @@ import { generateInvoiceTool } from './tools/generate-invoice.js'
 import { generateReportTool } from './tools/generate-report.js'
 import { generateFromMarkdownTool } from './tools/generate-from-markdown.js'
 import { listElementsTool } from './tools/list-elements.js'
+import { validateDocumentTool } from './tools/validate-document.js'
 
 // Read version from package.json so the server identity tracks the release —
 // hardcoding a version string here was the drift bug that left /mcp announcing
@@ -73,7 +74,7 @@ function createServer() {
     { capabilities: { tools: {} } }
   )
 
-  const tools = [generatePdfTool, generateInvoiceTool, generateReportTool, generateFromMarkdownTool, listElementsTool]
+  const tools = [generatePdfTool, generateInvoiceTool, generateReportTool, generateFromMarkdownTool, listElementsTool, validateDocumentTool]
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: tools.map(t => t.schema),

@@ -112,7 +112,7 @@ describe('MCP JSON-RPC integration', () => {
     const tools = result.tools as Array<{ name: string }>
     const toolNames = tools.map(t => t.name)
 
-    const expectedTools = ['generate_pdf', 'generate_invoice', 'generate_report', 'generate_from_markdown', 'list_element_types']
+    const expectedTools = ['generate_pdf', 'generate_invoice', 'generate_report', 'generate_from_markdown', 'list_element_types', 'validate_document']
     for (const name of expectedTools) {
       assert.ok(toolNames.includes(name), `Missing tool: ${name}`)
     }
