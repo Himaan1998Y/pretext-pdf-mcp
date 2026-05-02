@@ -69,6 +69,8 @@ Config file location:
 | `generate_pdf` | PdfDocument JSON descriptor | Base64 PDF + filename + size |
 | `generate_invoice` | Invoice data (parties, items, GST, currency) | Base64 PDF |
 | `generate_report` | Report sections with optional tables and callouts | Base64 PDF |
+| `generate_from_markdown` | Markdown string | Base64 PDF |
+| `validate_document` | PdfDocument JSON | Validation result (valid/errors) |
 | `list_element_types` | none | Markdown reference of all element types |
 
 ### generate_pdf
@@ -189,6 +191,64 @@ Multi-section report with optional TOC, tables, and callout boxes.
 ### list_element_types
 
 No input. Returns a markdown reference of all 16 element types (paragraph, heading, table, list, image, svg, code, blockquote, callout, toc, form-field, comment, hr, spacer, page-break, rich-paragraph) with key properties and examples.
+
+### generate_from_markdown
+
+Convert a Markdown string to a PDF without writing any JSON. Supports headings, bold/italic, links, ordered/unordered lists (2 levels), blockquotes, code blocks, and horizontal rules.
+
+```json
+{
+  "markdown": "# Hello\n\nThis is a **bold** paragraph.\n\n- Item 1\n- Item 2",
+  "filename": "hello",
+  "page_size": "A4",
+  "font_size": 12
+}
+```
+
+Returns:
+
+```json
+{
+  "success": true,
+  "base64": "<base64-encoded PDF bytes>",
+  "filename": "hello.pdf",
+  "size_bytes": 18432
+}
+```
+
+**Limits:** `markdown` max 100,000 characters. `font_size` must be 6–144. `page_size` one of: `A4`, `Letter`, `Legal`. Default filename: `document`.
+
+### validate_document
+
+Validate a pretext-pdf document schema without rendering it. Use this as a cheap preflight check before calling `generate_pdf` — catches typos, missing required fields, and unknown props in strict mode.
+
+```json
+{
+  "document": {
+    "pageSize": "A4",
+    "content": [{ "type": "heading", "level": 1, "text": "Test" }]
+  },
+  "strict": true
+}
+```
+
+Valid response:
+
+```json
+{ "valid": true, "error_count": 0 }
+```
+
+Invalid response:
+
+```json
+{
+  "valid": false,
+  "error_count": 2,
+  "message": "Strict validation failed (2 issues):\ndoc.content[0]: unknown prop 'colour' — did you mean \"color\"?\n..."
+}
+```
+
+**Tip:** `strict: true` (default) catches misspelled props with suggestions. Pass `strict: false` to only check required fields and types.
 
 ## Decoding the base64 PDF
 

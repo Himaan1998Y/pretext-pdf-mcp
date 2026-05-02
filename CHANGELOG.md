@@ -7,6 +7,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.3.1] — 2026-05-02
+
+Docs and manifest patch. No tool behavior changes.
+
+### Added
+
+- **`generate_from_markdown` and `validate_document` documented in README** — both tools
+  were implemented in 1.0.5 but never added to the Tools table or given their own `###`
+  sections. Users of Smithery / Claude Desktop had no reference for these two tools.
+- **`peerDependencies` for optional pretext-pdf features** — `@napi-rs/canvas`, `bwip-js`,
+  `qrcode`, `vega`, `vega-lite` added as optional peers so npm warns users when they try
+  to use chart, QR, or barcode elements without the required package installed.
+
+---
+
 ## [1.3.0] — 2026-05-02
 
 Bumps core dependency to the stable v1.0.0 release. No MCP surface changes.
