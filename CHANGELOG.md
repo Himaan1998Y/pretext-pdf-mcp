@@ -7,6 +7,49 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.3.0] — 2026-05-02
+
+Bumps core dependency to the stable v1.0.0 release. No MCP surface changes.
+
+### Changed
+
+- **Bumped `pretext-pdf` from `^0.9.3` to `^1.0.0`**. Key additions now available:
+  - Plugin extension API (`PluginDefinition`, `PluginMeasureContext`, etc.) — register
+    custom element types via `RenderOptions.plugins`
+  - `PdfBuilder` / `PdfBuilderOptions` exported from public surface
+  - `TocEntryElement` individually importable
+  - `Intl.Segmenter` pre-flight guard in `render()` — clear error on old runtimes
+  - `PluginRenderContext.pageWidth/pageHeight/margins` for full page geometry in plugins
+  - Drift guard CI step: `api:check` catches unintentional public-API changes
+  - `table-determinism` contract test ensures pagination is deterministic
+  - Stress tests moved to non-blocking CI step (`continue-on-error: true`)
+
+- **CI actions v4 → v5** (`actions/checkout`, `actions/setup-node`) across both
+  `ci.yml` and `release-on-tag.yml` — GitHub deprecates the Node 20-based v4 runtime
+  on 2026-06-02.
+
+### Fixed
+
+- **`dist/` removed from `.gitignore`** — the built JS files were already intentionally
+  tracked (listed in `package.json files`) but the stale `.gitignore` entry caused
+  IDE/tool confusion. Root-cause fix: align `.gitignore` with what the repo actually tracks.
+
+---
+
+## [1.2.1] — 2026-04-22
+
+Post-release fixes from the Tier 0.5 audit.
+
+### Fixed
+
+- **Error propagation in `generate-invoice` tool** — unhandled promise rejections from
+  `render()` are now caught and returned as structured MCP error responses instead of
+  crashing the server process.
+- **`list-elements` output completeness** — all built-in element types now appear in the
+  listing; two types were previously omitted due to a stale hardcoded list.
+
+---
+
 ## [1.2.0] — 2026-04-22
 
 Core-sync release. Brings the MCP wrapper forward from the outdated `pretext-pdf@^0.8.0` pin to `^0.9.2`, so Smithery users stop getting two-version-old bugs.

@@ -5,12 +5,13 @@ import { dirname, resolve } from 'node:path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, } from '@modelcontextprotocol/sdk/types.js';
-import { PretextPdfError } from 'pretext-pdf';
+import { PretextPdfError, validate } from 'pretext-pdf';
 import { generatePdfTool } from './tools/generate-pdf.js';
 import { generateInvoiceTool } from './tools/generate-invoice.js';
 import { generateReportTool } from './tools/generate-report.js';
 import { generateFromMarkdownTool } from './tools/generate-from-markdown.js';
 import { listElementsTool } from './tools/list-elements.js';
+import { validateDocumentTool } from './tools/validate-document.js';
 // Read version from package.json so the server identity tracks the release —
 // hardcoding a version string here was the drift bug that left /mcp announcing
 // 1.1.2 while package.json said 1.2.0. Root fix: single source of truth.
@@ -56,7 +57,7 @@ function isClientError(err) {
 }
 function createServer() {
     const server = new Server({ name: 'pretext-pdf', version: SERVER_VERSION }, { capabilities: { tools: {} } });
-    const tools = [generatePdfTool, generateInvoiceTool, generateReportTool, generateFromMarkdownTool, listElementsTool];
+    const tools = [generatePdfTool, generateInvoiceTool, generateReportTool, generateFromMarkdownTool, listElementsTool, validateDocumentTool];
     server.setRequestHandler(ListToolsRequestSchema, async () => ({
         tools: tools.map(t => t.schema),
     }));
@@ -142,8 +143,10 @@ if (port) {
                 return;
             }
             try {
-                // Validate input before calling render()
+                // Null/type guard: ensure body.data is an object before schema validation
                 validatePdfDocumentInput(body.data);
+                // Schema validation: catches all element-level errors before the render pipeline starts
+                validate(body.data);
                 const pdf = await render(body.data);
                 log('info', 'pdf generated', { endpoint: '/api/generate', size_bytes: pdf.byteLength });
                 res.writeHead(200, {
