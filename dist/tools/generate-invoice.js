@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { render } from 'pretext-pdf';
 import { toBase64 } from '../utils/base64.js';
+const SUPPORTED_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'];
 const CURRENCY_SYMBOLS = {
     INR: '₹',
     USD: '$',
@@ -221,7 +222,7 @@ function buildInvoiceDocument(input) {
 export const generateInvoiceTool = {
     schema: {
         name: 'generate_invoice',
-        description: 'Generate a professional invoice PDF. Accepts structured invoice data (from/to parties, line items, GST). Returns base64-encoded PDF. Supports INR/USD/EUR/GBP currencies. GST (IGST) is auto-calculated when gst_rate is set on items.',
+        description: `Generate a professional invoice PDF. Accepts structured invoice data (from/to parties, line items, GST). Returns base64-encoded PDF. Supports ${SUPPORTED_CURRENCIES.join('/')} currencies. GST (IGST) is auto-calculated when gst_rate is set on items.`,
         inputSchema: {
             type: 'object',
             properties: {
@@ -254,8 +255,8 @@ export const generateInvoiceTool = {
                 due_date: { type: 'string', description: 'Payment due date ISO format.' },
                 currency: {
                     type: 'string',
-                    enum: ['INR', 'USD', 'EUR', 'GBP'],
-                    description: 'Currency. Default: INR',
+                    enum: [...SUPPORTED_CURRENCIES],
+                    description: `Currency. Default: INR`,
                 },
                 items: {
                     type: 'array',
@@ -298,11 +299,11 @@ export const generateInvoiceTool = {
                     isError: true,
                 };
             }
-            // C3: validate currency symbol exists before buildInvoiceDocument uses it
-            const currency = args.currency ?? 'INR';
-            if (!CURRENCY_SYMBOLS[currency]) {
+            // C3: validate currency before buildInvoiceDocument uses it
+            const rawCurrency = args.currency ?? 'INR';
+            if (!SUPPORTED_CURRENCIES.includes(rawCurrency)) {
                 return {
-                    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `Unsupported currency: ${currency}. Supported: INR, USD, EUR, GBP` }) }],
+                    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `Unsupported currency: ${rawCurrency}. Supported: ${SUPPORTED_CURRENCIES.join(', ')}` }) }],
                     isError: true,
                 };
             }

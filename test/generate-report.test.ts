@@ -102,3 +102,90 @@ describe('generate_report tool', () => {
     assert.ok(parsed.size_bytes > 1000)
   })
 })
+
+describe('generate_report tool — validation errors', () => {
+  it('rejects missing title', async () => {
+    const result = await generateReportTool.handler({
+      sections: [{ heading: 'Section', body: 'Body text.' }],
+    })
+    assert.equal(result.isError, true)
+    const parsed = JSON.parse(result.content[0].text as string)
+    assert.equal(parsed.error, 'VALIDATION_ERROR')
+    assert.match(parsed.message, /title/)
+  })
+
+  it('rejects empty sections array', async () => {
+    const result = await generateReportTool.handler({
+      title: 'My Report',
+      sections: [],
+    })
+    assert.equal(result.isError, true)
+    const parsed = JSON.parse(result.content[0].text as string)
+    assert.equal(parsed.error, 'VALIDATION_ERROR')
+    assert.match(parsed.message, /sections/)
+  })
+
+  it('rejects section missing heading', async () => {
+    const result = await generateReportTool.handler({
+      title: 'My Report',
+      sections: [{ body: 'No heading here.' }],
+    })
+    assert.equal(result.isError, true)
+    const parsed = JSON.parse(result.content[0].text as string)
+    assert.equal(parsed.error, 'VALIDATION_ERROR')
+    assert.match(parsed.message, /heading/)
+  })
+
+  it('rejects section missing body', async () => {
+    const result = await generateReportTool.handler({
+      title: 'My Report',
+      sections: [{ heading: 'No body here.' }],
+    })
+    assert.equal(result.isError, true)
+    const parsed = JSON.parse(result.content[0].text as string)
+    assert.equal(parsed.error, 'VALIDATION_ERROR')
+    assert.match(parsed.message, /body/)
+  })
+
+  it('rejects invalid callout style', async () => {
+    const result = await generateReportTool.handler({
+      title: 'My Report',
+      sections: [{
+        heading: 'Section',
+        body: 'Body.',
+        callout: { style: 'danger', text: 'Watch out.' },
+      }],
+    })
+    assert.equal(result.isError, true)
+    const parsed = JSON.parse(result.content[0].text as string)
+    assert.equal(parsed.error, 'VALIDATION_ERROR')
+    assert.match(parsed.message, /callout\.style/)
+  })
+
+  it('rejects table with non-array headers', async () => {
+    const result = await generateReportTool.handler({
+      title: 'My Report',
+      sections: [{
+        heading: 'Section',
+        body: 'Body.',
+        table: { headers: 'Col1,Col2', rows: [] },
+      }],
+    })
+    assert.equal(result.isError, true)
+    const parsed = JSON.parse(result.content[0].text as string)
+    assert.equal(parsed.error, 'VALIDATION_ERROR')
+  })
+
+  it('includes section index in error for multi-section docs', async () => {
+    const result = await generateReportTool.handler({
+      title: 'My Report',
+      sections: [
+        { heading: 'Valid section', body: 'Fine.' },
+        { heading: '', body: 'Empty heading.' },
+      ],
+    })
+    assert.equal(result.isError, true)
+    const parsed = JSON.parse(result.content[0].text as string)
+    assert.match(parsed.message, /sections\[1\]/)
+  })
+})
