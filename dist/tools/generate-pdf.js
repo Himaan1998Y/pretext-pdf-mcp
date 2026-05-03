@@ -3,7 +3,7 @@ import { toBase64 } from '../utils/base64.js';
 export const generatePdfTool = {
     schema: {
         name: 'generate_pdf',
-        description: 'Generate a PDF from a pretext-pdf document descriptor (PdfDocument JSON). Returns base64-encoded PDF bytes. Use list_element_types to see available elements.',
+        description: 'Generate a PDF from a custom PdfDocument JSON descriptor. Use this for any layout not covered by generate_invoice or generate_report — e.g. resumes, contracts, certificates, presentations, or any multi-element composition. Returns base64-encoded PDF bytes. Call list_element_types first to see available elements and options.',
         inputSchema: {
             type: 'object',
             properties: {

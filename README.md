@@ -73,7 +73,7 @@ Config file location:
 claude mcp add pretext-pdf-mcp -- npx -y pretext-pdf-mcp
 ```
 
-After running this command, all 6 PDF generation tools are available in your Claude Code session.
+After running this command, all 6 MCP tools are available in your Claude Code session (4 generation tools + validate + list reference).
 
 ## HTTP Transport Mode (advanced)
 
@@ -226,11 +226,11 @@ Multi-section report with optional TOC, tables, and callout boxes.
 
 ### list_element_types
 
-No input. Returns a markdown reference of all 16 element types (paragraph, heading, table, list, image, svg, code, blockquote, callout, toc, form-field, comment, hr, spacer, page-break, rich-paragraph) with key properties and examples.
+No input. Returns a markdown reference of all 22 element types (paragraph, heading, table, list, image, svg, code, blockquote, callout, toc, form-field, comment, hr, spacer, page-break, rich-paragraph, qr-code, barcode, chart, footnote-def, float-group, and toc-entry) with key properties and examples.
 
 ### generate_from_markdown
 
-Convert a Markdown string to a PDF without writing any JSON. Supports headings, bold/italic, links, ordered/unordered lists (2 levels), blockquotes, code blocks, and horizontal rules.
+Convert a Markdown string to a PDF without writing any JSON. Supports headings, bold/italic, strikethrough, inline code, links, ordered/unordered lists (up to 3 levels), GFM tables (with column alignment), GFM task lists (☑/☐), blockquotes, fenced code blocks, and horizontal rules. Note: code blocks render as plain indented text — not styled monospace. For styled code blocks or richer layouts, use `generate_pdf`.
 
 ```json
 {
@@ -303,7 +303,7 @@ Invalid response:
 }
 ```
 
-**Tip:** `strict: true` (default for this tool) catches misspelled props with Levenshtein-nearest suggestions. Pass `strict: false` to only check required fields and types.
+**Tip:** Pass `strict: true` to catch misspelled props with Levenshtein-nearest suggestions. Default is `strict: false` — only checks required fields and types.
 
 ## Decoding the base64 PDF
 
@@ -311,6 +311,12 @@ In Node.js:
 ```javascript
 const bytes = Buffer.from(result.base64, 'base64')
 fs.writeFileSync('output.pdf', bytes)
+```
+
+In TypeScript (browser):
+```typescript
+const bytes = Uint8Array.from(atob(result.base64), c => c.charCodeAt(0))
+const blob = new Blob([bytes], { type: 'application/pdf' })
 ```
 
 In Python:

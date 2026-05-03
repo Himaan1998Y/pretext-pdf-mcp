@@ -273,7 +273,7 @@ export const generateInvoiceTool = {
   schema: {
     name: 'generate_invoice',
     description:
-      `Generate a professional invoice PDF. Accepts structured invoice data (from/to parties, line items, GST). Returns base64-encoded PDF. Supports ${SUPPORTED_CURRENCIES.join('/')} currencies. GST (IGST) is auto-calculated when gst_rate is set on items.`,
+      `Generate a professional invoice PDF. Accepts structured invoice data (from/to parties, line items, optional GST/tax). Returns base64-encoded PDF. Supports ${SUPPORTED_CURRENCIES.join('/')} currencies. gst_rate on items creates a tax column — use it for any tax system (GST, VAT, sales tax). For Indian invoices, provide supplier.state and buyer.state to auto-route IGST (inter-state) vs CGST+SGST (intra-state).`,
     inputSchema: {
       type: 'object' as const,
       properties: {

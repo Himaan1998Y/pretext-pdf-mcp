@@ -1,6 +1,10 @@
 name: pretext-pdf
-description: "Generate professional PDFs from structured JSON. Supports invoices (with GST), reports, tables, forms, encryption, and more. No headless browser — pure Node.js."
+description: "PDF generation for AI agents. Create GST invoices, reports, tables, forms, and markdown-to-PDF from structured JSON — no headless browser, pure Node.js."
 startCommand:
   type: stdio
   command: npx
   args: ["-y", "pretext-pdf-mcp"]
+configSchema:
+  type: object
+  properties: {}
+exampleConfig: {}

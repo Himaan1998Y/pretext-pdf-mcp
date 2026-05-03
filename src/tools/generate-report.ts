@@ -176,7 +176,7 @@ export const generateReportTool = {
   schema: {
     name: 'generate_report',
     description:
-      'Generate a professional multi-section report PDF with optional TOC, tables, and callout boxes. Returns base64-encoded PDF.',
+      'Generate a professional multi-section report PDF. Features: auto-generated TOC, per-section headings with PDF bookmarks, page-numbered footer, running header, optional tables and callout boxes per section. Returns base64-encoded PDF.',
     inputSchema: {
       type: 'object' as const,
       properties: {

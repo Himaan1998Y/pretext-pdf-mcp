@@ -99,10 +99,10 @@ function setCorsHeaders(res, requestOrigin) {
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
-const rawPort = process.env.PORT;
+const rawPort = process.env.MCP_PORT ?? process.env.PORT;
 const port = rawPort ? parseInt(rawPort, 10) : null;
 if (port !== null && isNaN(port)) {
-    process.stderr.write(`[pretext-pdf-mcp] Error: PORT="${rawPort}" is not a valid port number\n`);
+    process.stderr.write(`[pretext-pdf-mcp] Error: MCP_PORT="${rawPort}" is not a valid port number\n`);
     process.exit(1);
 }
 if (port) {
@@ -231,6 +231,7 @@ if (port) {
 }
 else {
     // Stdio mode — for local npx usage (Claude Desktop, Cursor, etc.)
+    process.stderr.write(`pretext-pdf-mcp v${SERVER_VERSION} ready (stdio). Waiting for MCP client connection.\n`);
     const server = createServer();
     const transport = new StdioServerTransport();
     await server.connect(transport);

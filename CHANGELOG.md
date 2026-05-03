@@ -7,6 +7,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.5] — 2026-05-04
+
+GTM polish: tool descriptions, MCP_PORT alias, stdio startup message, npm keywords, README accuracy.
+
+### Fixed
+
+- **`src/index.ts`: `MCP_PORT` env var** — Server now reads `MCP_PORT` (with `PORT` as fallback) so the documented `MCP_PORT=3000` env var actually works. Previously only `PORT` was read, silently ignoring `MCP_PORT`.
+- **`src/index.ts`: stdio startup message** — `npx pretext-pdf-mcp` now emits a confirmation line to stderr (`pretext-pdf-mcp vX.Y.Z ready (stdio)`) so users can verify the server started.
+- **README: `validate_document` strict default** — Description corrected from "`strict: true` (default)" to "`strict: false` is the default", matching what was shipped in v1.4.4.
+- **README: `list_element_types` element count** — Corrected from "16 element types" to "22 element types".
+- **README: `generate_from_markdown`** — Updated description to mention GFM tables, task lists, strikethrough, and inline code support; clarified code block limitation.
+- **README: base64 decode examples** — Added browser/TypeScript decode example alongside Node.js and Python.
+- **README: tool count phrasing** — "6 PDF generation tools" corrected to "6 MCP tools".
+
+### Changed
+
+- **Tool descriptions** — All four generation tool descriptions improved for LLM routing accuracy:
+  - `generate_pdf`: now explicitly says to use it "for any layout not covered by generate_invoice or generate_report".
+  - `generate_from_markdown`: lists all supported Markdown extensions including GFM tables and task lists.
+  - `generate_invoice`: documents IGST vs CGST+SGST routing via `supplier.state`/`buyer.state`; clarifies `gst_rate` works for any tax system.
+  - `generate_report`: mentions auto-features (TOC, bookmarks, page-numbered footer, running header).
+- **`package.json` keywords** — Expanded from 8 to 20 keywords covering `mcp-server`, `model-context-protocol`, `json-to-pdf`, `cursor`, `windsurf`, `serverless-pdf`, `no-chromium`, `resume`, etc.
+- **`package.json` description** — Rewritten to include searchable tokens: "Serverless, no Chromium. Invoices, reports, resumes."
+- **`smithery.yaml`** — Added `configSchema` and `exampleConfig` for better Smithery listing quality.
+
+---
+
 ## [1.4.4] — 2026-05-04
 
 Audit fixes: locale correctness, invoiceNo divergence, error handling, strict default, crash guards.
