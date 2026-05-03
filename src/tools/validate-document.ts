@@ -57,16 +57,19 @@ export const validateDocumentTool = {
       }
     }
 
+    const warnings = result.errors.filter((e) => e.severity === 'warning')
+    const errors = result.errors.filter((e) => e.severity !== 'warning')
+
     return {
       content: [
         {
           type: 'text',
           text: JSON.stringify({
             valid: false,
-            error_count: result.errorCount,
-            warning_count: 0,
-            errors: result.errors,
-            warnings: [],
+            error_count: errors.length,
+            warning_count: warnings.length,
+            errors,
+            warnings,
           }),
         },
       ],

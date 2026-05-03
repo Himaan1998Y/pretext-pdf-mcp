@@ -7,6 +7,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.2] — 2026-05-04
+
+Audit follow-up: honest `warning_count` reporting, picks up schema fixes from
+`pretext-pdf@1.0.4`.
+
+### Fixed
+
+- **`validate_document`: `warning_count` now computed from `severity`** — was
+  hardcoded to `0`. The handler now partitions `result.errors` by `severity`
+  into `errors` (severity !== 'warning') and `warnings` (severity === 'warning'),
+  reporting accurate counts. Previously, any warning-severity entries the
+  underlying library emitted would have been silently misreported as errors.
+
+### Changed
+
+- **`pretext-pdf` bumped to `^1.0.4`** — picks up:
+  - JSON Schema `$schema` dialect URI corrected
+  - `hr` element schema: `spaceAbove`/`spaceBelow` added (primary fields)
+  - `float-group` and `chart` added to schema's element `anyOf`
+  - Document `sections` and other coverage gaps filled
+
+---
+
 ## [1.4.1] — 2026-05-03
 
 validate_document response shape extended, CI workflow consolidated.

@@ -49,16 +49,18 @@ export const validateDocumentTool = {
                 content: [{ type: 'text', text: JSON.stringify({ valid: true, error_count: 0, warning_count: 0, errors: [], warnings: [] }) }],
             };
         }
+        const warnings = result.errors.filter((e) => e.severity === 'warning');
+        const errors = result.errors.filter((e) => e.severity !== 'warning');
         return {
             content: [
                 {
                     type: 'text',
                     text: JSON.stringify({
                         valid: false,
-                        error_count: result.errorCount,
-                        warning_count: 0,
-                        errors: result.errors,
-                        warnings: [],
+                        error_count: errors.length,
+                        warning_count: warnings.length,
+                        errors,
+                        warnings,
                     }),
                 },
             ],
