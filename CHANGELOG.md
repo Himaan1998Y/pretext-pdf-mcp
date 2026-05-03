@@ -7,6 +7,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.0] — 2026-05-03
+
+Structured validation errors, page_size guard, README improvements, and CI hardening.
+
+### Changed
+
+- **`validate_document` now returns structured `errors[]`** — response shape changes from
+  `{ valid, error_count, message: string }` to `{ valid, error_count, errors: ValidationError[] }`.
+  Each error object carries `path`, `message`, `code`, `severity`, and an optional `suggestion`
+  field for typo corrections. Backed by the new `validateDocument()` API in `pretext-pdf` v1.0.2.
+
+- **Bumped `pretext-pdf` from `^1.0.1` to `^1.0.2`**. New capabilities available:
+  - `validateDocument()` — non-throwing validation returning structured `ValidationResult`
+  - `Logger` interface — route warnings via `RenderOptions.logger` instead of `console.warn`
+  - Inter italic font bundled — `fontStyle: 'italic'` and italic markdown work without manual setup
+
+### Added
+
+- **`generate_from_markdown`: `page_size` runtime validation** — returns `VALIDATION_ERROR`
+  immediately if an unsupported value is passed (accepted: `A4`, `Letter`, `Legal`), rather
+  than propagating the error from deep inside the renderer.
+- **README: Claude Code CLI quick-start** — `claude mcp add pretext-pdf-mcp -- npx -y pretext-pdf-mcp`.
+- **README: HTTP transport mode** — documents `MCP_TRANSPORT=http`, `MCP_PORT`, `MCP_HOST` and
+  the `--host` security caveat for non-localhost binding.
+- **README: Known Limitations section** — documents italic fonts, optional dependencies, SVG
+  rendering, large-document performance, and CJS support status.
+- **`.gitattributes`** — enforces LF line endings in CI to prevent CRLF drift in `dist/`.
+- **`CONTRIBUTING.md`** and **`SECURITY.md`** — standard community health files.
+
+### CI
+
+- **Reverted actions to `@v4` stable** — `actions/checkout` and `actions/setup-node` were
+  on `@v5` (beta) which has known issues. Pinned back to the stable v4 release.
+- **Added `npm audit --audit-level=high`** step to test job (`continue-on-error: true`).
+- **Added `--provenance`** to `npm publish` with `id-token: write` permission for SLSA attestation.
+
+---
+
 ## [1.3.1] — 2026-05-02
 
 Docs and manifest patch. No tool behavior changes.

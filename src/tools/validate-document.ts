@@ -1,11 +1,10 @@
-import { validate, PretextPdfError } from 'pretext-pdf'
-import type { PdfDocument } from 'pretext-pdf'
+import { validateDocument } from 'pretext-pdf'
 
 export const validateDocumentTool = {
   schema: {
     name: 'validate_document',
     description:
-      'Validate a pretext-pdf document schema without rendering it. Returns immediately with all validation errors — use this as a cheap preflight check before calling generate_pdf.',
+      'Validate a pretext-pdf document schema without rendering it. Returns immediately with all validation errors — use this as a cheap preflight check before calling generate_pdf. Each error includes a structured path, message, and optional typo suggestion.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -28,23 +27,40 @@ export const validateDocumentTool = {
 
     if (doc === null || doc === undefined || typeof doc !== 'object' || Array.isArray(doc)) {
       return {
-        content: [{ type: 'text', text: JSON.stringify({ valid: false, error_count: 1, message: 'document must be a non-null object' }) }],
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              valid: false,
+              error_count: 1,
+              errors: [{ path: 'document', message: 'document must be a non-null object', severity: 'error', code: 'INVALID_INPUT' }],
+            }),
+          },
+        ],
         isError: true,
       }
     }
 
-    try {
-      validate(doc as PdfDocument, { strict })
+    const result = validateDocument(doc, { strict })
+
+    if (result.valid) {
       return {
-        content: [{ type: 'text', text: JSON.stringify({ valid: true, error_count: 0 }) }],
+        content: [{ type: 'text', text: JSON.stringify({ valid: true, error_count: 0, errors: [] }) }],
       }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err)
-      const lineCount = message.split('\n').filter(Boolean).length
-      return {
-        content: [{ type: 'text', text: JSON.stringify({ valid: false, error_count: lineCount, message }) }],
-        isError: true,
-      }
+    }
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            valid: false,
+            error_count: result.errorCount,
+            errors: result.errors,
+          }),
+        },
+      ],
+      isError: true,
     }
   },
 }

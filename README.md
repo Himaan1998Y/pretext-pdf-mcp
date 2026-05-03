@@ -1,5 +1,10 @@
 # pretext-pdf-mcp
 
+[![npm version](https://img.shields.io/npm/v/pretext-pdf-mcp?style=flat-square)](https://www.npmjs.com/package/pretext-pdf-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/pretext-pdf-mcp?style=flat-square)](https://www.npmjs.com/package/pretext-pdf-mcp)
+[![license](https://img.shields.io/npm/l/pretext-pdf-mcp?style=flat-square)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/Himaan1998Y/pretext-pdf-mcp/ci.yml?branch=master&style=flat-square&label=CI)](https://github.com/Himaan1998Y/pretext-pdf-mcp/actions/workflows/ci.yml)
+
 MCP server for [pretext-pdf](https://github.com/Himaan1998Y/pretext-pdf) — generate professional PDFs from structured JSON in Claude, Cursor, or any AI agent.
 
 No headless browser. No puppeteer. Pure Node.js with embedded fonts and precision text layout.
@@ -61,6 +66,37 @@ Add to your `claude_desktop_config.json`:
 Config file location:
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+## Using with Claude Code CLI
+
+```bash
+claude mcp add pretext-pdf-mcp -- npx -y pretext-pdf-mcp
+```
+
+After running this command, all 6 PDF generation tools are available in your Claude Code session.
+
+## HTTP Transport Mode (advanced)
+
+By default the server runs over stdio (MCP standard transport). For HTTP transport:
+
+```bash
+MCP_TRANSPORT=http MCP_PORT=3000 npx pretext-pdf-mcp
+```
+
+Environment variables:
+- `MCP_TRANSPORT` — Set to `http` to enable HTTP transport (default: `stdio`)
+- `MCP_PORT` — HTTP listen port when `MCP_TRANSPORT=http` (default: `3000`)
+- `MCP_HOST` — HTTP listen host (default: `127.0.0.1`)
+
+> **Security note:** HTTP transport is intended for trusted local networks only. Do not expose the HTTP port to the public internet without adding an authentication layer.
+
+## Known Limitations
+
+- **Italic fonts** — Italic markdown (`*text*`) requires an italic font variant. Inter italic is supported via `@fontsource/inter` (installed automatically). For other fonts, provide `{ family, weight, style: 'italic', src }` in `doc.fonts`.
+- **QR codes, barcodes, charts** — Require optional peer dependencies: `qrcode`, `bwip-js`, `vega`/`vega-lite`. Install the ones you need.
+- **SVG and images** — Image URLs must be HTTPS. Private/local IP addresses are blocked (SSRF prevention). File paths require absolute paths.
+- **Large documents** — No hard page limit, but generation time scales with page count. Documents over 10,000 content elements trigger a performance advisory.
+- **CJS consumers** — pretext-pdf is ESM-only. If your project uses CommonJS, use dynamic `import()`.
 
 ## Tools
 

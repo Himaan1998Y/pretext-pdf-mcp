@@ -1,0 +1,16 @@
+# Normalize line endings to LF on checkout
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files — never touch line endings
+fonts/*.ttf binary
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+
+# Dist files — always LF
+dist/**/*.js text eol=lf
+dist/**/*.d.ts text eol=lf
+dist/**/*.map text eol=lf

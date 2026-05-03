@@ -21,7 +21,8 @@ describe('validate_document tool', () => {
     const parsed = JSON.parse(result.content[0].text as string)
     assert.equal(parsed.valid, false)
     assert.ok(parsed.error_count > 0, 'expected at least one error')
-    assert.ok(typeof parsed.message === 'string' && parsed.message.length > 0, 'expected error message')
+    assert.ok(Array.isArray(parsed.errors) && parsed.errors.length > 0, 'expected errors array')
+    assert.ok(typeof parsed.errors[0].message === 'string' && parsed.errors[0].message.length > 0, 'expected error message')
   })
 
   it('returns valid:false when document has no content array', async () => {
@@ -31,7 +32,7 @@ describe('validate_document tool', () => {
     assert.equal(result.isError, true)
     const parsed = JSON.parse(result.content[0].text as string)
     assert.equal(parsed.valid, false)
-    assert.ok(typeof parsed.message === 'string')
+    assert.ok(Array.isArray(parsed.errors) && parsed.errors.length > 0, 'expected errors array')
   })
 
   it('returns valid:false for null document input', async () => {
@@ -51,7 +52,10 @@ describe('validate_document tool', () => {
     assert.equal(result.isError, true)
     const parsed = JSON.parse(result.content[0].text as string)
     assert.equal(parsed.valid, false)
-    assert.ok(parsed.message.includes('unknown'), 'expected "unknown" in error message')
+    assert.ok(
+      Array.isArray(parsed.errors) && parsed.errors.some((e: { message: string }) => e.message.includes('unknown')),
+      'expected "unknown" in an error message'
+    )
   })
 
   it('valid:true even when strict:false for doc with unknown properties', async () => {

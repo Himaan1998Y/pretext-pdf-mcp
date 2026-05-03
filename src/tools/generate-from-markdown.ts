@@ -55,6 +55,14 @@ export const generateFromMarkdownTool = {
         }
       }
 
+      const VALID_PAGE_SIZES = ['A4', 'Letter', 'Legal'] as const
+      if (args.page_size !== undefined && !VALID_PAGE_SIZES.includes(args.page_size as 'A4' | 'Letter' | 'Legal')) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `page_size must be one of: ${VALID_PAGE_SIZES.join(', ')}. Received: "${String(args.page_size)}"` }) }],
+          isError: true,
+        }
+      }
+
       const content = await markdownToContent(markdown)
       const pageSizeArg = (args.page_size as string | undefined) ?? 'A4'
       const doc: PdfDocument = {
