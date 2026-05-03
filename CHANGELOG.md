@@ -7,6 +7,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.3] — 2026-05-04
+
+Picks up pretext-pdf@1.0.5 schema/validation improvements. Adds `highlight.js` peer dep.
+
+### Changed
+
+- **`pretext-pdf` bumped to `^1.0.5`** — picks up:
+  - `ValidationResult.warningCount` field (no longer need to filter client-side)
+  - JSON Schema now covers all remaining fields across 9 element types
+  - `validateDocument()` and `pretext-pdf/schema` documented in README
+
+### Added
+
+- **`highlight.js` added as optional peer dependency** — mirrors the peer dep already declared
+  in `pretext-pdf`. Users installing `highlight.js` for syntax-highlighted code blocks now get
+  correct npm peer resolution without a missing-peer warning from this package.
+
+---
+
 ## [1.4.2] — 2026-05-04
 
 Audit follow-up: honest `warning_count` reporting, picks up schema fixes from
@@ -213,10 +232,12 @@ Entries for 1.0.9 through 1.1.2 were not written at the time. Git history is the
 ## [1.0.6] — 2026-04-13
 
 ### Security
+
 - Per-chunk size enforcement on both HTTP endpoints (`/api/generate` 100KB, `/mcp` 500KB).
   Previously the full request body was buffered before the size check, allowing memory exhaustion via large payloads.
 
 ### Changed
+
 - Bumped `pretext-pdf` dependency to `^0.5.0` to pick up security hardening, CJK/Thai i18n,
   validation improvements, `defaultParagraphStyle`, per-section headers/footers, and tabular numbers.
 
@@ -225,7 +246,8 @@ Entries for 1.0.9 through 1.1.2 were not written at the time. Git history is the
 ## [1.0.5] — 2026-04-09
 
 ### Added
-- Live demo at https://himaan1998y.github.io/pretext-pdf-mcp/
+
+- Live demo at <https://himaan1998y.github.io/pretext-pdf-mcp/>
 - StackBlitz playground link in README
 - Smithery registry integration (`https://pretext-pdf.run.tools`)
 - `generate_invoice` tool: GST-aware invoices with INR/USD/EUR/GBP support
@@ -235,6 +257,7 @@ Entries for 1.0.9 through 1.1.2 were not written at the time. Git history is the
 - Claude Desktop configuration documented in README
 
 ### Changed
+
 - HTTP server mode: `PORT` env var enables REST API alongside stdio MCP transport
 - Tool descriptions expanded for better LLM comprehension
 
