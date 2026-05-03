@@ -48,17 +48,17 @@ export const generateFromMarkdownTool = {
         }
       }
 
-      if (typeof args.font_size === 'number' && (args.font_size < 6 || args.font_size > 144)) {
+      const VALID_PAGE_SIZES: readonly string[] = ['A4', 'Letter', 'Legal']
+      if (args.page_size !== undefined && !VALID_PAGE_SIZES.includes(String(args.page_size))) {
         return {
-          content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'font_size must be between 6 and 144' }) }],
+          content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `page_size must be one of: ${VALID_PAGE_SIZES.join(', ')}. Received: "${String(args.page_size)}"` }) }],
           isError: true,
         }
       }
 
-      const VALID_PAGE_SIZES = ['A4', 'Letter', 'Legal'] as const
-      if (args.page_size !== undefined && !VALID_PAGE_SIZES.includes(args.page_size as 'A4' | 'Letter' | 'Legal')) {
+      if (typeof args.font_size === 'number' && (args.font_size < 6 || args.font_size > 144)) {
         return {
-          content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `page_size must be one of: ${VALID_PAGE_SIZES.join(', ')}. Received: "${String(args.page_size)}"` }) }],
+          content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'font_size must be between 6 and 144' }) }],
           isError: true,
         }
       }

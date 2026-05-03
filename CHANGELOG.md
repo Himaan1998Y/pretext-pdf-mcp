@@ -7,6 +7,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.1] — 2026-05-03
+
+validate_document response shape extended, CI workflow consolidated.
+
+### Added
+
+- **`validate_document` response now includes `warning_count` and `warnings`** — all responses
+  include `warning_count: 0` and `warnings: []`. Reserved for future warning-severity feedback.
+  Backwards-compatible additive change.
+
+### Changed
+
+- **`pretext-pdf` bumped to `^1.0.3`** — picks up `pretext-pdf/schema` JSON Schema export,
+  simplified `marked` peer dep range, and `fonts.ts` cast removal.
+
+- **CI: `release-on-tag.yml` merged into `ci.yml`** — `release` job now has `needs: [publish]`,
+  ensuring GitHub Release is only created after tests pass and npm publish succeeds. Eliminates
+  the race condition where a release could fire before CI completed.
+
+- **README: `validate_document` response examples** updated to include `warning_count` and `warnings`.
+
+---
+
 ## [1.4.0] — 2026-05-03
 
 Structured validation errors, page_size guard, README improvements, and CI hardening.

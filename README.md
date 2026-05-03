@@ -271,7 +271,7 @@ Validate a pretext-pdf document schema without rendering it. Use this as a cheap
 Valid response:
 
 ```json
-{ "valid": true, "error_count": 0 }
+{ "valid": true, "error_count": 0, "warning_count": 0, "errors": [], "warnings": [] }
 ```
 
 Invalid response:
@@ -280,11 +280,30 @@ Invalid response:
 {
   "valid": false,
   "error_count": 2,
-  "message": "Strict validation failed (2 issues):\ndoc.content[0]: unknown prop 'colour' — did you mean \"color\"?\n..."
+  "warning_count": 0,
+  "errors": [
+    {
+      "path": "doc.content[0].colour",
+      "message": "unknown property. did you mean \"color\"",
+      "code": "UNKNOWN_PROPERTY",
+      "severity": "error",
+      "unknownProp": "colour",
+      "suggestion": "color"
+    },
+    {
+      "path": "doc.pageSize",
+      "message": "unknown property. did you mean \"pageSize\"",
+      "code": "UNKNOWN_PROPERTY",
+      "severity": "error",
+      "unknownProp": "pageSise",
+      "suggestion": "pageSize"
+    }
+  ],
+  "warnings": []
 }
 ```
 
-**Tip:** `strict: true` (default) catches misspelled props with suggestions. Pass `strict: false` to only check required fields and types.
+**Tip:** `strict: true` (default for this tool) catches misspelled props with Levenshtein-nearest suggestions. Pass `strict: false` to only check required fields and types.
 
 ## Decoding the base64 PDF
 
