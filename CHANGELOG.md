@@ -244,7 +244,7 @@ Core-sync release. Brings the MCP wrapper forward from the outdated `pretext-pdf
 
 ### Note on CHANGELOG gap
 
-Entries for 1.0.9 through 1.1.2 were not written at the time. Git history is the authoritative record for those versions. Going forward, every tagged release gets a CHANGELOG entry — enforced by a future `release-on-tag.yml` workflow (tracked in the roadmap as Tier 2).
+Versions 1.0.9–1.1.2 were unpublished development snapshots that were not released to npm; no CHANGELOG entries were written. The gap in the public history between 1.0.8 and 1.2.0 is intentional. Going forward, every tagged npm release has a CHANGELOG entry (enforced by the `release-on-tag.yml` CI workflow that shipped in v1.3.0).
 
 ---
 
@@ -317,6 +317,7 @@ Entries for 1.0.9 through 1.1.2 were not written at the time. Git history is the
 ## [1.0.0] — 2026-04-08
 
 ### Added
+
 - Initial release
 - `generate_pdf` tool: full `PdfDocument` JSON → Base64 PDF
 - Stdio MCP transport (compatible with Claude Desktop, Cursor, Windsurf)
