@@ -1,6 +1,6 @@
 {
   "name": "pretext-pdf-mcp",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "MCP server for pretext-pdf — generate professional PDFs from JSON in Claude, Cursor, or any AI agent",
   "keywords": [
     "mcp",
@@ -24,11 +24,11 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "marked": "^18.0.2",
     "pretext-pdf": "^1.0.5"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "marked": "^18.0.2",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0"
   },
@@ -36,6 +36,7 @@
     "@napi-rs/canvas": "^0.1.57",
     "bwip-js": "^4.0.0",
     "highlight.js": "^11.0.0",
+    "marked": ">=9.0.0",
     "qrcode": "^1.5.0",
     "vega": "^5.0.0 || ^6.0.0",
     "vega-lite": "^5.0.0 || ^6.0.0"
@@ -48,6 +49,9 @@
       "optional": true
     },
     "highlight.js": {
+      "optional": true
+    },
+    "marked": {
       "optional": true
     },
     "qrcode": {

@@ -290,7 +290,7 @@ export const generateReportTool = {
       const doc = buildReportDocument(input)
       const bytes = await render(doc)
       const base64 = toBase64(bytes)
-      const filename = (args.filename as string ?? `report-${Date.now()}`) + '.pdf'
+      const filename = ((args.filename as string) || `report-${Date.now()}`) + '.pdf'
       return {
         content: [
           {

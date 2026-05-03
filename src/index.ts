@@ -85,11 +85,19 @@ function createServer() {
     const tool = tools.find(t => t.schema.name === request.params.name)
     if (!tool) {
       return {
-        content: [{ type: 'text', text: `Unknown tool: ${request.params.name}` }],
+        content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'UNKNOWN_TOOL', message: `Unknown tool: ${request.params.name}` }) }],
         isError: true,
       }
     }
-    return tool.handler(request.params.arguments ?? {})
+    try {
+      return await tool.handler(request.params.arguments ?? {})
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'INTERNAL_ERROR', message: msg }) }],
+        isError: true,
+      }
+    }
   })
 
   return server
@@ -125,6 +133,7 @@ if (port) {
   const { render } = await import('pretext-pdf')
 
   const httpServer = createHttpServer(async (req, res) => {
+    try {
     const url = new URL(req.url ?? '/', `http://localhost:${port}`)
     setCorsHeaders(res, req.headers['origin'] as string | undefined)
 
@@ -234,6 +243,14 @@ if (port) {
 
     res.writeHead(404)
     res.end()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      log('error', 'unhandled http handler error', { msg })
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Internal server error', message: msg }))
+      }
+    }
   })
 
   httpServer.listen(port, () => {

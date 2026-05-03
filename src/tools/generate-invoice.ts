@@ -37,10 +37,19 @@ interface InvoiceInput {
   currency?: SupportedCurrency
   items: InvoiceItem[]
   notes?: string
+  upi_qr_data?: string
 }
 
-function formatMoney(amount: number, symbol: string): string {
-  return `${symbol}${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const CURRENCY_LOCALES: Record<SupportedCurrency, string> = {
+  INR: 'en-IN',
+  USD: 'en-US',
+  EUR: 'de-DE',
+  GBP: 'en-GB',
+}
+
+function formatMoney(amount: number, symbol: string, currency: SupportedCurrency): string {
+  const locale = CURRENCY_LOCALES[currency]
+  return `${symbol}${amount.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 function partyBlock(p: InvoiceParty): string {
@@ -56,11 +65,10 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-function buildInvoiceDocument(input: InvoiceInput): any {
+function buildInvoiceDocument(input: InvoiceInput, invoiceNo: string): any {
   const currency = input.currency ?? 'INR'
   const sym = CURRENCY_SYMBOLS[currency]
   const date = input.date ?? todayISO()
-  const invoiceNo = input.invoice_number ?? `INV-${Date.now()}-${randomBytes(3).toString('hex')}`
   const hasHsn = input.items.some(i => i.hsn_code)
   const hasGst = input.items.some(i => i.gst_rate !== undefined && i.gst_rate > 0)
 
@@ -90,8 +98,8 @@ function buildInvoiceDocument(input: InvoiceInput): any {
     const cells: any[] = [{ text: item.description }]
     if (hasHsn) cells.push({ text: item.hsn_code ?? '' })
     cells.push({ text: String(item.quantity) })
-    cells.push({ text: formatMoney(item.rate, sym) })
-    cells.push({ text: formatMoney(amount, sym) })
+    cells.push({ text: formatMoney(item.rate, sym, currency) })
+    cells.push({ text: formatMoney(amount, sym, currency) })
     itemRows.push({ cells })
   }
 
@@ -112,7 +120,7 @@ function buildInvoiceDocument(input: InvoiceInput): any {
     { type: 'hr', color: '#dddddd', thickness: 0.5, spaceBelow: 6 },
     {
       type: 'paragraph',
-      text: `Subtotal:  ${formatMoney(subtotal, sym)}`,
+      text: `Subtotal:  ${formatMoney(subtotal, sym, currency)}`,
       align: 'right',
       spaceAfter: hasGst ? 4 : 8,
     },
@@ -130,7 +138,7 @@ function buildInvoiceDocument(input: InvoiceInput): any {
     for (const [rate, gstAmt] of Object.entries(rateGroups)) {
       totalsContent.push({
         type: 'paragraph',
-        text: `IGST @ ${rate}%:  ${formatMoney(gstAmt, sym)}`,
+        text: `IGST @ ${rate}%:  ${formatMoney(gstAmt, sym, currency)}`,
         align: 'right',
         color: '#555555',
         spaceAfter: 4,
@@ -139,7 +147,7 @@ function buildInvoiceDocument(input: InvoiceInput): any {
     totalsContent.push({ type: 'hr', color: '#1a1a2e', thickness: 1, spaceBelow: 6 })
     totalsContent.push({
       type: 'paragraph',
-      text: `GRAND TOTAL:  ${formatMoney(grandTotal, sym)}`,
+      text: `GRAND TOTAL:  ${formatMoney(grandTotal, sym, currency)}`,
       fontSize: 13,
       fontWeight: 700,
       color: '#1a1a2e',
@@ -150,7 +158,7 @@ function buildInvoiceDocument(input: InvoiceInput): any {
     totalsContent.push({ type: 'hr', color: '#1a1a2e', thickness: 1, spaceBelow: 6 })
     totalsContent.push({
       type: 'paragraph',
-      text: `TOTAL:  ${formatMoney(grandTotal, sym)}`,
+      text: `TOTAL:  ${formatMoney(grandTotal, sym, currency)}`,
       fontSize: 13,
       fontWeight: 700,
       color: '#1a1a2e',
@@ -225,9 +233,9 @@ function buildInvoiceDocument(input: InvoiceInput): any {
   ]
 
   // UPI QR code (optional)
-  if ((input as any).upi_qr_data) {
+  if (input.upi_qr_data) {
     content.push({ type: 'paragraph', text: 'Scan to pay via UPI:', fontSize: 9, color: '#555555', spaceAfter: 4 })
-    content.push({ type: 'qr-code', data: (input as any).upi_qr_data, size: 72, align: 'left', spaceAfter: 8 })
+    content.push({ type: 'qr-code', data: input.upi_qr_data, size: 72, align: 'left', spaceAfter: 8 })
   }
 
   // Notes
@@ -461,11 +469,11 @@ export const generateInvoiceTool = {
       }
 
       const input = args as unknown as InvoiceInput
-      const doc = buildInvoiceDocument(input)
+      const invoiceNo = (input.invoice_number) || `INV-${Date.now()}-${randomBytes(3).toString('hex')}`
+      const doc = buildInvoiceDocument(input, invoiceNo)
       const bytes = await render(doc)
       const base64 = toBase64(bytes)
-      const invoiceNo = input.invoice_number ?? 'invoice'
-      const filename = (args.filename as string ?? `invoice-${invoiceNo}`) + '.pdf'
+      const filename = ((args.filename as string) || `invoice-${invoiceNo}`) + '.pdf'
       return {
         content: [
           {
@@ -477,7 +485,7 @@ export const generateInvoiceTool = {
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string }
       const message = err instanceof Error ? err.message : String(err)
-      if (!e.code) {
+      if (!(err instanceof Error) || !e.code) {
         process.stderr.write(JSON.stringify({ ts: new Date().toISOString(), level: 'error', tool: 'generate_invoice', msg: message }) + '\n')
       }
       return {

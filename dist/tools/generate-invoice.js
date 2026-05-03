@@ -8,8 +8,15 @@ const CURRENCY_SYMBOLS = {
     EUR: '€',
     GBP: '£',
 };
-function formatMoney(amount, symbol) {
-    return `${symbol}${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const CURRENCY_LOCALES = {
+    INR: 'en-IN',
+    USD: 'en-US',
+    EUR: 'de-DE',
+    GBP: 'en-GB',
+};
+function formatMoney(amount, symbol, currency) {
+    const locale = CURRENCY_LOCALES[currency];
+    return `${symbol}${amount.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 function partyBlock(p) {
     const lines = [p.company];
@@ -26,11 +33,10 @@ function partyBlock(p) {
 function todayISO() {
     return new Date().toISOString().slice(0, 10);
 }
-function buildInvoiceDocument(input) {
+function buildInvoiceDocument(input, invoiceNo) {
     const currency = input.currency ?? 'INR';
     const sym = CURRENCY_SYMBOLS[currency];
     const date = input.date ?? todayISO();
-    const invoiceNo = input.invoice_number ?? `INV-${Date.now()}-${randomBytes(3).toString('hex')}`;
     const hasHsn = input.items.some(i => i.hsn_code);
     const hasGst = input.items.some(i => i.gst_rate !== undefined && i.gst_rate > 0);
     // Build columns for line items table
@@ -59,8 +65,8 @@ function buildInvoiceDocument(input) {
         if (hasHsn)
             cells.push({ text: item.hsn_code ?? '' });
         cells.push({ text: String(item.quantity) });
-        cells.push({ text: formatMoney(item.rate, sym) });
-        cells.push({ text: formatMoney(amount, sym) });
+        cells.push({ text: formatMoney(item.rate, sym, currency) });
+        cells.push({ text: formatMoney(amount, sym, currency) });
         itemRows.push({ cells });
     }
     // GST calculation: use IGST if inter-state (default), or CGST+SGST if intra
@@ -78,7 +84,7 @@ function buildInvoiceDocument(input) {
         { type: 'hr', color: '#dddddd', thickness: 0.5, spaceBelow: 6 },
         {
             type: 'paragraph',
-            text: `Subtotal:  ${formatMoney(subtotal, sym)}`,
+            text: `Subtotal:  ${formatMoney(subtotal, sym, currency)}`,
             align: 'right',
             spaceAfter: hasGst ? 4 : 8,
         },
@@ -96,7 +102,7 @@ function buildInvoiceDocument(input) {
         for (const [rate, gstAmt] of Object.entries(rateGroups)) {
             totalsContent.push({
                 type: 'paragraph',
-                text: `IGST @ ${rate}%:  ${formatMoney(gstAmt, sym)}`,
+                text: `IGST @ ${rate}%:  ${formatMoney(gstAmt, sym, currency)}`,
                 align: 'right',
                 color: '#555555',
                 spaceAfter: 4,
@@ -105,7 +111,7 @@ function buildInvoiceDocument(input) {
         totalsContent.push({ type: 'hr', color: '#1a1a2e', thickness: 1, spaceBelow: 6 });
         totalsContent.push({
             type: 'paragraph',
-            text: `GRAND TOTAL:  ${formatMoney(grandTotal, sym)}`,
+            text: `GRAND TOTAL:  ${formatMoney(grandTotal, sym, currency)}`,
             fontSize: 13,
             fontWeight: 700,
             color: '#1a1a2e',
@@ -117,7 +123,7 @@ function buildInvoiceDocument(input) {
         totalsContent.push({ type: 'hr', color: '#1a1a2e', thickness: 1, spaceBelow: 6 });
         totalsContent.push({
             type: 'paragraph',
-            text: `TOTAL:  ${formatMoney(grandTotal, sym)}`,
+            text: `TOTAL:  ${formatMoney(grandTotal, sym, currency)}`,
             fontSize: 13,
             fontWeight: 700,
             color: '#1a1a2e',
@@ -412,11 +418,11 @@ export const generateInvoiceTool = {
                 return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'due_date must not contain newline or null characters' }) }], isError: true };
             }
             const input = args;
-            const doc = buildInvoiceDocument(input);
+            const invoiceNo = (input.invoice_number) || `INV-${Date.now()}-${randomBytes(3).toString('hex')}`;
+            const doc = buildInvoiceDocument(input, invoiceNo);
             const bytes = await render(doc);
             const base64 = toBase64(bytes);
-            const invoiceNo = input.invoice_number ?? 'invoice';
-            const filename = (args.filename ?? `invoice-${invoiceNo}`) + '.pdf';
+            const filename = (args.filename || `invoice-${invoiceNo}`) + '.pdf';
             return {
                 content: [
                     {
@@ -429,7 +435,7 @@ export const generateInvoiceTool = {
         catch (err) {
             const e = err;
             const message = err instanceof Error ? err.message : String(err);
-            if (!e.code) {
+            if (!(err instanceof Error) || !e.code) {
                 process.stderr.write(JSON.stringify({ ts: new Date().toISOString(), level: 'error', tool: 'generate_invoice', msg: message }) + '\n');
             }
             return {

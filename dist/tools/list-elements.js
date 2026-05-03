@@ -124,7 +124,7 @@ export const listElementsTool = {
                 content: [
                     {
                         type: 'text',
-                        text: `[pretext-pdf-mcp] DOCUMENTATION DRIFT: The following element types exist in pretext-pdf but are not documented in this tool: ${_missingDocs.join(', ')}. Update ELEMENTS_REFERENCE in list-elements.ts.`,
+                        text: JSON.stringify({ success: false, error: 'DOCUMENTATION_DRIFT', message: `The following element types exist in pretext-pdf but are not documented in this tool: ${_missingDocs.join(', ')}. Update ELEMENTS_REFERENCE in list-elements.ts.` }),
                     },
                 ],
             };

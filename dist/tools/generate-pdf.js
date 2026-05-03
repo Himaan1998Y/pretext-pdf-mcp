@@ -22,7 +22,7 @@ export const generatePdfTool = {
     },
     handler: async (args) => {
         try {
-            if (!args.document || typeof args.document !== 'object') {
+            if (!args.document || typeof args.document !== 'object' || Array.isArray(args.document)) {
                 return {
                     content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'document is required and must be an object' }) }],
                     isError: true,
@@ -30,7 +30,7 @@ export const generatePdfTool = {
             }
             const bytes = await render(args.document);
             const base64 = toBase64(bytes);
-            const filename = (args.filename ?? 'document') + '.pdf';
+            const filename = (args.filename || 'document') + '.pdf';
             return {
                 content: [
                     {

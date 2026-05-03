@@ -15,7 +15,7 @@ export const validateDocumentTool = {
         },
         strict: {
           type: 'boolean',
-          description: 'When true, also report unknown/misspelled properties (default: true)',
+          description: 'When true, also report unknown/misspelled properties (default: false)',
         },
       },
       required: ['document'],
@@ -24,7 +24,7 @@ export const validateDocumentTool = {
 
   async handler(args: Record<string, unknown>) {
     const doc = args.document
-    const strict = (args.strict as boolean | undefined) ?? true
+    const strict = (args.strict as boolean | undefined) ?? false
 
     if (doc === null || doc === undefined || typeof doc !== 'object' || Array.isArray(doc)) {
       return {

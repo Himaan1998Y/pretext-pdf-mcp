@@ -7,6 +7,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.4] — 2026-05-04
+
+Audit fixes: locale correctness, invoiceNo divergence, error handling, strict default, crash guards.
+
+### Fixed
+
+- **`generate_invoice`: currency locale bug** — `formatMoney` now uses the correct `Intl` locale per currency (`en-IN` for INR, `en-US` for USD, `de-DE` for EUR, `en-GB` for GBP). Previously, all currencies used `en-IN`, rendering `$100,000` as `$1,00,000`.
+- **`generate_invoice`: `invoiceNo` divergence** — The fallback invoice number is now generated once in the handler and passed into `buildInvoiceDocument`, so the PDF content and the returned filename always agree.
+- **`generate_invoice`: error logging condition** — The `!(err instanceof Error) || !e.code` guard is now consistent with all other tools (was just `!e.code`).
+- **`generate_invoice`: `upi_qr_data` type safety** — Added `upi_qr_data?: string` to the `InvoiceInput` interface; removed the two `as any` casts in `buildInvoiceDocument`.
+- **`validate_document`: strict default** — Description and runtime default both now say `false`, matching the `pretext-pdf` library default (was incorrectly `true`).
+- **`src/index.ts`: outer try/catch in MCP request handler** — Unhandled throws from tool handlers are now caught and returned as structured `INTERNAL_ERROR` JSON. Unknown tool response also uses JSON format.
+- **`src/index.ts`: HTTP handler top-level error boundary** — A `try/catch` now wraps the entire async handler body, preventing unhandled rejections on client disconnects or unexpected errors.
+- **`list_element_types`: error response format** — The `DOCUMENTATION_DRIFT` error response is now JSON (`{ success, error, message }`) matching all other tools.
+- **`generate_pdf`: `Array.isArray` guard** — Array inputs are now rejected at the `document` validation step instead of reaching `render()`.
+- **Filename empty-string fallback** — All four tools now use `||` instead of `??` for filename assignment so an empty string `""` falls back to the default.
+- **`generate_from_markdown`: description accuracy** — Code blocks noted as plain text (not monospace), list nesting updated to "up to 3 levels".
+
+### Changed
+
+- **`marked` moved to `peerDependencies` (optional)** — `marked` is now an optional peer dep (`>=9.0.0`) instead of a direct dependency, and also added to `devDependencies` so tests continue to pass. Consumers who don't use `generate_from_markdown` no longer install `marked` unnecessarily.
+
+---
+
 ## [1.4.3] — 2026-05-04
 
 Picks up pretext-pdf@1.0.5 schema/validation improvements. Adds `highlight.js` peer dep.

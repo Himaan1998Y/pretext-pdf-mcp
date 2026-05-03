@@ -12,7 +12,7 @@ export const validateDocumentTool = {
                 },
                 strict: {
                     type: 'boolean',
-                    description: 'When true, also report unknown/misspelled properties (default: true)',
+                    description: 'When true, also report unknown/misspelled properties (default: false)',
                 },
             },
             required: ['document'],
@@ -20,7 +20,7 @@ export const validateDocumentTool = {
     },
     async handler(args) {
         const doc = args.document;
-        const strict = args.strict ?? true;
+        const strict = args.strict ?? false;
         if (doc === null || doc === undefined || typeof doc !== 'object' || Array.isArray(doc)) {
             return {
                 content: [

@@ -6,7 +6,7 @@ export const generateFromMarkdownTool = {
   schema: {
     name: 'generate_from_markdown',
     description:
-      'Convert a Markdown string to a PDF. Supports headings, bold/italic, links, ordered/unordered lists (2 levels), blockquotes, code blocks, and horizontal rules. Returns a base64-encoded PDF.',
+      'Convert a Markdown string to a PDF. Supports headings, bold/italic, links, ordered/unordered lists (nested lists up to 3 levels), blockquotes, code blocks (rendered as plain text — not styled monospace), and horizontal rules. Returns a base64-encoded PDF.',
     inputSchema: {
       type: 'object' as const,
       properties: {

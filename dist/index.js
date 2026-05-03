@@ -65,11 +65,20 @@ function createServer() {
         const tool = tools.find(t => t.schema.name === request.params.name);
         if (!tool) {
             return {
-                content: [{ type: 'text', text: `Unknown tool: ${request.params.name}` }],
+                content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'UNKNOWN_TOOL', message: `Unknown tool: ${request.params.name}` }) }],
                 isError: true,
             };
         }
-        return tool.handler(request.params.arguments ?? {});
+        try {
+            return await tool.handler(request.params.arguments ?? {});
+        }
+        catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            return {
+                content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'INTERNAL_ERROR', message: msg }) }],
+                isError: true,
+            };
+        }
     });
     return server;
 }
@@ -101,110 +110,120 @@ if (port) {
     const { StreamableHTTPServerTransport } = await import('@modelcontextprotocol/sdk/server/streamableHttp.js');
     const { render } = await import('pretext-pdf');
     const httpServer = createHttpServer(async (req, res) => {
-        const url = new URL(req.url ?? '/', `http://localhost:${port}`);
-        setCorsHeaders(res, req.headers['origin']);
-        // Preflight
-        if (req.method === 'OPTIONS') {
-            res.writeHead(204);
-            res.end();
-            return;
-        }
-        // Health check
-        if (url.pathname === '/health') {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ ok: true, service: 'pretext-pdf-mcp' }));
-            return;
-        }
-        // REST API — POST /api/generate → returns PDF bytes
-        // Limit: 500 KB — accommodates PDFs with images, rich formatting, and new features (v0.5.1+)
-        // Validation: body.data must be a PdfDocument object before calling render()
-        if (url.pathname === '/api/generate' && req.method === 'POST') {
-            const MAX_BODY = 500_000; // 500 KB — same as MCP endpoint, supports full feature set
-            const chunks = [];
-            let totalSize = 0;
-            for await (const chunk of req) {
-                totalSize += chunk.length;
-                if (totalSize > MAX_BODY) {
-                    log('warn', 'request too large', { endpoint: '/api/generate', size_bytes: totalSize });
-                    res.writeHead(413, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'Request too large (max 500 KB)' }));
-                    return;
-                }
-                chunks.push(chunk);
-            }
-            let body;
-            try {
-                body = JSON.parse(Buffer.concat(chunks).toString());
-            }
-            catch {
-                log('warn', 'invalid json body', { endpoint: '/api/generate' });
-                res.writeHead(400, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+        try {
+            const url = new URL(req.url ?? '/', `http://localhost:${port}`);
+            setCorsHeaders(res, req.headers['origin']);
+            // Preflight
+            if (req.method === 'OPTIONS') {
+                res.writeHead(204);
+                res.end();
                 return;
             }
-            try {
-                // Null/type guard: ensure body.data is an object before schema validation
-                validatePdfDocumentInput(body.data);
-                // Schema validation: catches all element-level errors before the render pipeline starts
-                validate(body.data);
-                const pdf = await render(body.data);
-                log('info', 'pdf generated', { endpoint: '/api/generate', size_bytes: pdf.byteLength });
-                res.writeHead(200, {
-                    'Content-Type': 'application/pdf',
-                    'Content-Disposition': 'inline; filename="output.pdf"',
-                    'Content-Length': pdf.byteLength,
+            // Health check
+            if (url.pathname === '/health') {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ ok: true, service: 'pretext-pdf-mcp' }));
+                return;
+            }
+            // REST API — POST /api/generate → returns PDF bytes
+            // Limit: 500 KB — accommodates PDFs with images, rich formatting, and new features (v0.5.1+)
+            // Validation: body.data must be a PdfDocument object before calling render()
+            if (url.pathname === '/api/generate' && req.method === 'POST') {
+                const MAX_BODY = 500_000; // 500 KB — same as MCP endpoint, supports full feature set
+                const chunks = [];
+                let totalSize = 0;
+                for await (const chunk of req) {
+                    totalSize += chunk.length;
+                    if (totalSize > MAX_BODY) {
+                        log('warn', 'request too large', { endpoint: '/api/generate', size_bytes: totalSize });
+                        res.writeHead(413, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Request too large (max 500 KB)' }));
+                        return;
+                    }
+                    chunks.push(chunk);
+                }
+                let body;
+                try {
+                    body = JSON.parse(Buffer.concat(chunks).toString());
+                }
+                catch {
+                    log('warn', 'invalid json body', { endpoint: '/api/generate' });
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+                    return;
+                }
+                try {
+                    // Null/type guard: ensure body.data is an object before schema validation
+                    validatePdfDocumentInput(body.data);
+                    // Schema validation: catches all element-level errors before the render pipeline starts
+                    validate(body.data);
+                    const pdf = await render(body.data);
+                    log('info', 'pdf generated', { endpoint: '/api/generate', size_bytes: pdf.byteLength });
+                    res.writeHead(200, {
+                        'Content-Type': 'application/pdf',
+                        'Content-Disposition': 'inline; filename="output.pdf"',
+                        'Content-Length': pdf.byteLength,
+                    });
+                    res.end(Buffer.from(pdf));
+                }
+                catch (err) {
+                    const msg = err instanceof Error ? err.message : String(err);
+                    const isClient = isClientError(err);
+                    const statusCode = isClient ? 400 : 500;
+                    const errorCode = err instanceof PretextPdfError ? err.code : 'UNKNOWN_ERROR';
+                    log(isClient ? 'warn' : 'error', 'pdf generation failed', { endpoint: '/api/generate', code: errorCode, statusCode });
+                    res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: msg, code: errorCode }));
+                }
+                return;
+            }
+            // MCP endpoint — POST /mcp (stateless, structured protocol)
+            // Limit: 500 KB — same as REST API, accommodates full feature set (images, rich formatting, etc.)
+            // Note: MCP protocol adds overhead (jsonrpc wrapper), so same limit across endpoints
+            if (url.pathname === '/mcp' && req.method === 'POST') {
+                const MAX_MCP_BODY = 500_000; // 500 KB — consistent with /api/generate
+                const chunks = [];
+                let mcpSize = 0;
+                for await (const chunk of req) {
+                    mcpSize += chunk.length;
+                    if (mcpSize > MAX_MCP_BODY) {
+                        log('warn', 'request too large', { endpoint: '/mcp', size_bytes: mcpSize });
+                        res.writeHead(413, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Request too large (max 500 KB)' }));
+                        return;
+                    }
+                    chunks.push(chunk);
+                }
+                let body;
+                try {
+                    body = JSON.parse(Buffer.concat(chunks).toString());
+                }
+                catch {
+                    log('warn', 'invalid json body', { endpoint: '/mcp' });
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+                    return;
+                }
+                log('info', 'mcp request received', { endpoint: '/mcp', size_bytes: mcpSize });
+                const transport = new StreamableHTTPServerTransport({
+                    sessionIdGenerator: undefined,
                 });
-                res.end(Buffer.from(pdf));
-            }
-            catch (err) {
-                const msg = err instanceof Error ? err.message : String(err);
-                const isClient = isClientError(err);
-                const statusCode = isClient ? 400 : 500;
-                const errorCode = err instanceof PretextPdfError ? err.code : 'UNKNOWN_ERROR';
-                log(isClient ? 'warn' : 'error', 'pdf generation failed', { endpoint: '/api/generate', code: errorCode, statusCode });
-                res.writeHead(statusCode, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: msg, code: errorCode }));
-            }
-            return;
-        }
-        // MCP endpoint — POST /mcp (stateless, structured protocol)
-        // Limit: 500 KB — same as REST API, accommodates full feature set (images, rich formatting, etc.)
-        // Note: MCP protocol adds overhead (jsonrpc wrapper), so same limit across endpoints
-        if (url.pathname === '/mcp' && req.method === 'POST') {
-            const MAX_MCP_BODY = 500_000; // 500 KB — consistent with /api/generate
-            const chunks = [];
-            let mcpSize = 0;
-            for await (const chunk of req) {
-                mcpSize += chunk.length;
-                if (mcpSize > MAX_MCP_BODY) {
-                    log('warn', 'request too large', { endpoint: '/mcp', size_bytes: mcpSize });
-                    res.writeHead(413, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'Request too large (max 500 KB)' }));
-                    return;
-                }
-                chunks.push(chunk);
-            }
-            let body;
-            try {
-                body = JSON.parse(Buffer.concat(chunks).toString());
-            }
-            catch {
-                log('warn', 'invalid json body', { endpoint: '/mcp' });
-                res.writeHead(400, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+                const server = createServer();
+                await server.connect(transport);
+                await transport.handleRequest(req, res, body);
                 return;
             }
-            log('info', 'mcp request received', { endpoint: '/mcp', size_bytes: mcpSize });
-            const transport = new StreamableHTTPServerTransport({
-                sessionIdGenerator: undefined,
-            });
-            const server = createServer();
-            await server.connect(transport);
-            await transport.handleRequest(req, res, body);
-            return;
+            res.writeHead(404);
+            res.end();
         }
-        res.writeHead(404);
-        res.end();
+        catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            log('error', 'unhandled http handler error', { msg });
+            if (!res.headersSent) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Internal server error', message: msg }));
+            }
+        }
     });
     httpServer.listen(port, () => {
         process.stderr.write(`pretext-pdf-mcp HTTP server listening on port ${port}\n`);
