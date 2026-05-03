@@ -29,7 +29,14 @@ export const validateDocumentTool = {
                         text: JSON.stringify({
                             valid: false,
                             error_count: 1,
-                            errors: [{ path: 'document', message: 'document must be a non-null object', severity: 'error', code: 'INVALID_INPUT' }],
+                            warning_count: 0,
+                            errors: [{
+                                    path: 'document',
+                                    message: 'document must be a non-null object',
+                                    severity: 'error',
+                                    code: 'INVALID_INPUT',
+                                }],
+                            warnings: [],
                         }),
                     },
                 ],
@@ -39,7 +46,7 @@ export const validateDocumentTool = {
         const result = validateDocument(doc, { strict });
         if (result.valid) {
             return {
-                content: [{ type: 'text', text: JSON.stringify({ valid: true, error_count: 0, errors: [] }) }],
+                content: [{ type: 'text', text: JSON.stringify({ valid: true, error_count: 0, warning_count: 0, errors: [], warnings: [] }) }],
             };
         }
         return {
@@ -49,11 +56,12 @@ export const validateDocumentTool = {
                     text: JSON.stringify({
                         valid: false,
                         error_count: result.errorCount,
+                        warning_count: 0,
                         errors: result.errors,
+                        warnings: [],
                     }),
                 },
             ],
-            isError: true,
         };
     },
 };
