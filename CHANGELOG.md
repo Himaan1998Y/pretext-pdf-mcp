@@ -7,6 +7,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.6] — 2026-05-05
+
+Tool description accuracy and docs polish following pretext-pdf v1.0.7 upgrade.
+
+### Fixed
+
+- **`docs/index.html`: demo uses `₹` instead of `Rs.`** — The sample invoice demo now
+  displays the correct Indian Rupee symbol (`₹`) instead of the ASCII approximation `Rs.`
+  across all six occurrences (invoice table headers, subtotal/IGST/total lines, report
+  price-per-sqft column, and resume ARR figure).
+
+### Changed
+
+- **`list_element_types`: `paragraph` and `heading` now document `dir` prop** — Both
+  element descriptions now list `dir` (ltr|rtl|auto) so LLMs know RTL text is supported
+  without having to guess or check the schema.
+
+- **`generate_invoice` description: currency-symbol guarantee documented** — Tool
+  description now states that `₹ $ € £` symbols are guaranteed not to break away from
+  adjacent numbers, clarifying a layout correctness property of the underlying engine.
+
+---
+
 ## [1.4.5] — 2026-05-04
 
 GTM polish: tool descriptions, MCP_PORT alias, stdio startup message, npm keywords, README accuracy.

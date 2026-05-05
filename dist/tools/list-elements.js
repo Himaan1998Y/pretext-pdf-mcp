@@ -2,11 +2,11 @@ import { ELEMENT_TYPES } from 'pretext-pdf';
 const ELEMENTS_REFERENCE = `# pretext-pdf Element Types Reference
 
 ## paragraph
-Renders a text block. Key props: \`text\` (required), \`fontSize\`, \`fontWeight\` (400|700), \`color\` (#hex), \`align\` (left|center|right|justify), \`spaceAfter\`, \`spaceBefore\`, \`bgColor\`, \`underline\`, \`strikethrough\`, \`url\`, \`letterSpacing\`, \`smallCaps\`.
+Renders a text block. Key props: \`text\` (required), \`fontSize\`, \`fontWeight\` (400|700), \`color\` (#hex), \`align\` (left|center|right|justify), \`dir\` (ltr|rtl|auto), \`spaceAfter\`, \`spaceBefore\`, \`bgColor\`, \`underline\`, \`strikethrough\`, \`url\`, \`letterSpacing\`, \`smallCaps\`.
 Example: \`{ type: "paragraph", text: "Hello world", fontSize: 12, color: "#333333" }\`
 
 ## heading
-Section heading with automatic bookmarks. Key props: \`level\` (1–4, required), \`text\` (required), \`fontSize\` (defaults: h1=28, h2=22, h3=18, h4=15), \`color\`, \`align\`, \`anchor\` (for internal links), \`bookmark\` (set false to exclude from PDF outline), \`spaceAfter\`.
+Section heading with automatic bookmarks. Key props: \`level\` (1–4, required), \`text\` (required), \`fontSize\` (defaults: h1=28, h2=22, h3=18, h4=15), \`color\`, \`align\`, \`dir\` (ltr|rtl|auto), \`anchor\` (for internal links), \`bookmark\` (set false to exclude from PDF outline), \`spaceAfter\`.
 Example: \`{ type: "heading", level: 1, text: "Introduction", color: "#1a1a2e" }\`
 
 ## rich-paragraph

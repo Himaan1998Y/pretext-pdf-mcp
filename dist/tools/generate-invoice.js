@@ -228,7 +228,7 @@ function buildInvoiceDocument(input, invoiceNo) {
 export const generateInvoiceTool = {
     schema: {
         name: 'generate_invoice',
-        description: `Generate a professional invoice PDF. Accepts structured invoice data (from/to parties, line items, optional GST/tax). Returns base64-encoded PDF. Supports ${SUPPORTED_CURRENCIES.join('/')} currencies. gst_rate on items creates a tax column — use it for any tax system (GST, VAT, sales tax). For Indian invoices, provide supplier.state and buyer.state to auto-route IGST (inter-state) vs CGST+SGST (intra-state).`,
+        description: `Generate a professional invoice PDF. Accepts structured invoice data (from/to parties, line items, optional GST/tax). Returns base64-encoded PDF. Supports ${SUPPORTED_CURRENCIES.join('/')} currencies. Currency symbols (₹ $ € £) are guaranteed not to break away from adjacent numbers across line wraps. gst_rate on items creates a tax column — use it for any tax system (GST, VAT, sales tax). For Indian invoices, provide supplier.state and buyer.state to auto-route IGST (inter-state) vs CGST+SGST (intra-state).`,
         inputSchema: {
             type: 'object',
             properties: {
