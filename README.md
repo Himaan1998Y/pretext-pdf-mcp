@@ -69,11 +69,28 @@ Config file location:
 
 ## Using with Claude Code CLI
 
+**Option A — one-liner (user-scoped, persists across projects):**
+
 ```bash
 claude mcp add pretext-pdf-mcp -- npx -y pretext-pdf-mcp
 ```
 
-After running this command, all 6 MCP tools are available in your Claude Code session (4 generation tools + validate + list reference).
+**Option B — project-scoped `.mcp.json` (checked into repo, shared with your team):**
+
+Create `.mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "pretext-pdf": {
+      "command": "npx",
+      "args": ["-y", "pretext-pdf-mcp"]
+    }
+  }
+}
+```
+
+Then restart Claude Code (or run `/mcp` to verify). All 6 tools are available in your session. Type `/mcp` to confirm the server appears.
 
 ## HTTP Transport Mode (advanced)
 
