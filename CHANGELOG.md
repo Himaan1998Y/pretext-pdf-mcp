@@ -7,6 +7,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.7] — 2026-05-06
+
+### Fixed
+
+- **HTTP server now binds `127.0.0.1` by default** — Previously `httpServer.listen(port)`
+  with no host argument defaulted to `0.0.0.0`, exposing the server on all network
+  interfaces. The `MCP_HOST` env var was documented but never actually read at bind time.
+  Now reads `MCP_HOST ?? '127.0.0.1'` and passes it explicitly. Users who intentionally
+  want all-interface binding must now set `MCP_HOST=0.0.0.0` explicitly.
+
+---
+
 ## [1.4.6] — 2026-05-05
 
 Tool description accuracy and docs polish following pretext-pdf v1.0.7 upgrade.
