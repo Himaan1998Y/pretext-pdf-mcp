@@ -7,6 +7,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.8] — 2026-05-06
+
+Test coverage Phase 2: HTTP transport now has end-to-end coverage, including a
+regression guard for the v1.4.7 bind-address fix.
+
+### Added
+
+- **`test/http-transport.test.ts`** (+11 tests, 1 skipped on Windows) — End-to-end
+  coverage for the HTTP transport mode of the MCP server. Spawns `dist/index.js`
+  with `MCP_PORT` set and sends raw HTTP requests. Covers:
+  - **Bind regression (Phase 0 lock-in)** — Pinned-format match for `listening on
+    127.0.0.1:<port>` (default) and `listening on 0.0.0.0:<port>` (when
+    `MCP_HOST=0.0.0.0` is set). Prevents silent regression of the v1.4.7 fix.
+  - **All 4 endpoints** — `OPTIONS *` (CORS 204), `GET /health` (200 with JSON
+    body), `POST /api/generate` (200 with PDF bytes / 400 invalid JSON / 413 body
+    too large), `POST /mcp` (JSON-RPC dispatch via StreamableHTTPServerTransport
+    with both SSE and JSON response formats handled).
+  - **MCP JSON-RPC over HTTP** — `tools/list` returns the 6-tool list,
+    `tools/call generate_pdf` returns a base64 PDF in the MCP response shape.
+  - **Misc** — `GET /unknown` 404, SIGTERM graceful shutdown within 1 second
+    (skipped on Windows where SIGTERM maps to `TerminateProcess`).
+
+### Changed
+
+- **Test runner now builds first** — Added `pretest: npm run build` so the
+  HTTP transport tests (which spawn the compiled binary) always run against a
+  fresh `dist/`.
+
+---
+
 ## [1.4.7] — 2026-05-06
 
 ### Fixed
