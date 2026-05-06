@@ -253,8 +253,9 @@ if (port) {
     }
   })
 
-  httpServer.listen(port, () => {
-    process.stderr.write(`pretext-pdf-mcp HTTP server listening on port ${port}\n`)
+  const host = process.env.MCP_HOST ?? '127.0.0.1'
+  httpServer.listen(port, host, () => {
+    process.stderr.write(`pretext-pdf-mcp HTTP server listening on ${host}:${port}\n`)
   })
 } else {
   // Stdio mode — for local npx usage (Claude Desktop, Cursor, etc.)
