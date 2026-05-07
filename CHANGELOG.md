@@ -7,6 +7,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.9] — 2026-05-07
+
+Upgrade to pretext-pdf v1.1.0 which vendors `@chenglou/pretext` directly.
+No behavioral changes; installs without needing a GitHub URL dependency.
+
+### Changed
+
+- **`pretext-pdf` dependency bumped to `^1.1.0`** — The `@chenglou/pretext`
+  GitHub URL dependency is now gone from the install graph. `npm install` for
+  users of `pretext-pdf-mcp` no longer needs to resolve a GitHub tag; all
+  layout-engine code ships bundled inside `pretext-pdf@1.1.0`.
+
+---
+
 ## [1.4.8] — 2026-05-06
 
 Test coverage Phase 2: HTTP transport now has end-to-end coverage, including a
