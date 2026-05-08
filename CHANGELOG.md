@@ -7,6 +7,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.10] — 2026-05-08
+
+### Fixed
+
+- **npm audit: 3 moderate vulnerabilities patched** — `npm audit fix` updated
+  transitive dependencies from `@modelcontextprotocol/sdk`: `hono` (JSX tag-name
+  injection GHSA-69xw-7hcm-h432, bodyLimit bypass GHSA-9vqf-7f2p-gf9v) and
+  `ip-address` via `express-rate-limit` (XSS GHSA-v2v4-37r5-5v8g).
+  `npm audit` now reports 0 vulnerabilities.
+
+---
+
 ## [1.4.9] — 2026-05-07
 
 Upgrade to pretext-pdf v1.1.0 which vendors `@chenglou/pretext` directly.
