@@ -1,4 +1,4 @@
-import { render } from 'pretext-pdf';
+import { render, validateDocument } from 'pretext-pdf';
 import { toBase64 } from '../utils/base64.js';
 export const generatePdfTool = {
     schema: {
@@ -25,6 +25,23 @@ export const generatePdfTool = {
             if (!args.document || typeof args.document !== 'object' || Array.isArray(args.document)) {
                 return {
                     content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'document is required and must be an object' }) }],
+                    isError: true,
+                };
+            }
+            // Reject prototype-pollution payloads before any processing
+            const docStr = JSON.stringify(args.document);
+            if (docStr.includes('"__proto__"') || docStr.includes('"constructor"')) {
+                return {
+                    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'Prototype-polluted keys are not allowed' }) }],
+                    isError: true,
+                };
+            }
+            // Validate before render — generate_pdf must not bypass schema checks
+            const validation = validateDocument(args.document);
+            if (!validation.valid) {
+                const messages = validation.errors.map((e) => `${e.path}: ${e.message}`).join('; ');
+                return {
+                    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: messages }) }],
                     isError: true,
                 };
             }

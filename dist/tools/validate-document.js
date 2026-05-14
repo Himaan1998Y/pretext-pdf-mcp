@@ -40,7 +40,6 @@ export const validateDocumentTool = {
                         }),
                     },
                 ],
-                isError: true,
             };
         }
         const result = validateDocument(doc, { strict });

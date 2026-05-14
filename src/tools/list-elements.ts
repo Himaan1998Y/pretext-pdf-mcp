@@ -124,15 +124,8 @@ export const listElementsTool = {
 
   handler: async (_args: Record<string, unknown>) => {
     if (_missingDocs.length > 0) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({ success: false, error: 'DOCUMENTATION_DRIFT', message: `The following element types exist in pretext-pdf but are not documented in this tool: ${_missingDocs.join(', ')}. Update ELEMENTS_REFERENCE in list-elements.ts.` }),
-          },
-        ],
-      }
+      // Dev invariant: warn but still serve documentation — callers must not be blocked by this
+      console.error(`[pretext-pdf-mcp] Documentation drift — update ELEMENTS_REFERENCE: ${_missingDocs.join(', ')}`)
     }
     return {
       content: [{ type: 'text', text: ELEMENTS_REFERENCE }],

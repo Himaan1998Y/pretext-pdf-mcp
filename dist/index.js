@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolRequestSchema, ListToolsRequestSchema, } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListToolsRequestSchema, McpError, ErrorCode, } from '@modelcontextprotocol/sdk/types.js';
 import { PretextPdfError, validate } from 'pretext-pdf';
 import { generatePdfTool } from './tools/generate-pdf.js';
 import { generateInvoiceTool } from './tools/generate-invoice.js';
@@ -64,10 +64,7 @@ function createServer() {
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const tool = tools.find(t => t.schema.name === request.params.name);
         if (!tool) {
-            return {
-                content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'UNKNOWN_TOOL', message: `Unknown tool: ${request.params.name}` }) }],
-                isError: true,
-            };
+            throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${request.params.name}`);
         }
         try {
             return await tool.handler(request.params.arguments ?? {});

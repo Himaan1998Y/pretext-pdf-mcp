@@ -39,14 +39,16 @@ describe('validate_document tool', () => {
 
   it('returns valid:false for null document input', async () => {
     const result = await validateDocumentTool.handler({ document: null })
-    assert.equal(result.isError, true)
+    // Tool succeeded — null input is a valid call that returns valid:false. isError must be absent.
+    assert.equal(result.isError, undefined)
     const parsed = JSON.parse(result.content[0].text as string)
     assert.equal(parsed.valid, false)
   })
 
   it('null document returns structured INVALID_INPUT error', async () => {
     const result = await validateDocumentTool.handler({ document: null })
-    assert.equal(result.isError, true)
+    // Tool succeeded — returning validation errors is not a crash. isError must be absent.
+    assert.equal(result.isError, undefined)
     const parsed = JSON.parse(result.content[0].text as string)
     assert.equal(parsed.valid, false)
     assert.equal(parsed.error_count, 1)

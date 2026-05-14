@@ -7,6 +7,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.11] — 2026-05-08
+
+### Fixed
+
+- **`generate_pdf` bypassed schema validation** (`src/tools/generate-pdf.ts`) — The tool
+  called `render()` directly without first calling `validateDocument()`. Malformed or
+  prototype-polluted payloads were silently accepted. Now validates before rendering and
+  rejects inputs containing `__proto__`/`constructor` keys.
+
+- **Three MCP `isError:true` protocol violations** — Per MCP spec, `isError:true` means
+  the tool *crashed*, not that validation failed. Three sites misused this flag:
+  - `UNKNOWN_TOOL` in `src/index.ts` now throws `McpError(ErrorCode.MethodNotFound)`
+    instead of returning a tool result with `isError:true`. Clients receive a proper
+    JSON-RPC error, not a fake tool crash.
+  - `validate_document` returning `valid:false` for null input no longer sets `isError:true`.
+    A tool that successfully validates an invalid document has *succeeded*, not crashed.
+  - `list_element_types` documentation-drift invariant now logs to stderr and serves
+    documentation anyway, instead of returning `isError:true` to callers.
+
+---
+
 ## [1.4.10] — 2026-05-08
 
 ### Fixed
