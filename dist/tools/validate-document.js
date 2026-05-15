@@ -42,7 +42,35 @@ export const validateDocumentTool = {
                 ],
             };
         }
-        const result = validateDocument(doc, { strict });
+        // Wrap in try/catch so any unexpected throw inside validateDocument
+        // still produces the structured ValidationError[] envelope rather than
+        // a plain-string MCP error. Keeps the response shape consistent.
+        let result;
+        try {
+            result = validateDocument(doc, { strict });
+        }
+        catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: JSON.stringify({
+                            valid: false,
+                            error_count: 1,
+                            warning_count: 0,
+                            errors: [{
+                                    path: 'document',
+                                    message: `Unexpected validation error: ${message}`,
+                                    severity: 'error',
+                                    code: 'VALIDATION_ERROR',
+                                }],
+                            warnings: [],
+                        }),
+                    },
+                ],
+            };
+        }
         if (result.valid) {
             return {
                 content: [{ type: 'text', text: JSON.stringify({ valid: true, error_count: 0, warning_count: 0, errors: [], warnings: [] }) }],

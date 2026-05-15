@@ -1,5 +1,6 @@
-import { render, validateDocument } from 'pretext-pdf';
+import { render } from 'pretext-pdf';
 import { toBase64 } from '../utils/base64.js';
+import { runDocumentSafetyChecks } from '../utils/safety.js';
 export const generatePdfTool = {
     schema: {
         name: 'generate_pdf',
@@ -28,24 +29,14 @@ export const generatePdfTool = {
                     isError: true,
                 };
             }
-            // Reject prototype-pollution payloads before any processing
-            const docStr = JSON.stringify(args.document);
-            if (docStr.includes('"__proto__"') || docStr.includes('"constructor"')) {
-                return {
-                    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'Prototype-polluted keys are not allowed' }) }],
-                    isError: true,
-                };
-            }
-            // Validate before render — generate_pdf must not bypass schema checks
-            const validation = validateDocument(args.document);
-            if (!validation.valid) {
-                const messages = validation.errors.map((e) => `${e.path}: ${e.message}`).join('; ');
-                return {
-                    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: messages }) }],
-                    isError: true,
-                };
-            }
-            const bytes = await render(args.document);
+            // Defence-in-depth: prototype-pollution guard + schema validation.
+            // Shared with generate_invoice, generate_report, and generate_from_markdown.
+            const safetyError = runDocumentSafetyChecks(args.document);
+            if (safetyError)
+                return safetyError;
+            const doc = args.document;
+            // Safe cast to PdfDocument: runDocumentSafetyChecks proved doc conforms structurally
+            const bytes = await render(doc);
             const base64 = toBase64(bytes);
             const filename = (args.filename || 'document') + '.pdf';
             return {

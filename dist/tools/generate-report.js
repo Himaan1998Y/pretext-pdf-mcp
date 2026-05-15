@@ -1,5 +1,6 @@
 import { render } from 'pretext-pdf';
 import { toBase64 } from '../utils/base64.js';
+import { hasUnsafeKeys, runDocumentSafetyChecks } from '../utils/safety.js';
 const CALLOUT_COLORS = {
     info: '#0070f3',
     warning: '#f59e0b',
@@ -203,6 +204,14 @@ export const generateReportTool = {
     },
     handler: async (args) => {
         try {
+            // Defence-in-depth: reject prototype-pollution payloads before any
+            // field-level processing.
+            if (hasUnsafeKeys(args)) {
+                return {
+                    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'Input contains unsafe keys (__proto__, constructor, prototype)' }) }],
+                    isError: true,
+                };
+            }
             if (!args.title || typeof args.title !== 'string') {
                 return {
                     content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'title is required' }) }],
@@ -253,6 +262,10 @@ export const generateReportTool = {
             }
             const input = args;
             const doc = buildReportDocument(input);
+            // Defence-in-depth: validate the built doc structurally before render.
+            const safetyError = runDocumentSafetyChecks(doc);
+            if (safetyError)
+                return safetyError;
             const bytes = await render(doc);
             const base64 = toBase64(bytes);
             const filename = (args.filename || `report-${Date.now()}`) + '.pdf';

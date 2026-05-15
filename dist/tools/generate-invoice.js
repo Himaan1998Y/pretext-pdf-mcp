@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { render } from 'pretext-pdf';
 import { toBase64 } from '../utils/base64.js';
+import { hasUnsafeKeys, runDocumentSafetyChecks } from '../utils/safety.js';
 const SUPPORTED_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'];
 const CURRENCY_SYMBOLS = {
     INR: '₹',
@@ -292,6 +293,16 @@ export const generateInvoiceTool = {
     },
     handler: async (args) => {
         try {
+            // Defence-in-depth: reject prototype-pollution payloads before any
+            // field-level processing. The doc is constructed internally so the
+            // built doc cannot contain unsafe keys, but the raw input could leak
+            // polluted keys via Object.assign or iteration in helper code.
+            if (hasUnsafeKeys(args)) {
+                return {
+                    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'Input contains unsafe keys (__proto__, constructor, prototype)' }) }],
+                    isError: true,
+                };
+            }
             // C5: validate from/to are objects with required company string
             if (!args.from || typeof args.from !== 'object' || typeof args.from.company !== 'string') {
                 return {
@@ -420,6 +431,12 @@ export const generateInvoiceTool = {
             const input = args;
             const invoiceNo = (input.invoice_number) || `INV-${Date.now()}-${randomBytes(3).toString('hex')}`;
             const doc = buildInvoiceDocument(input, invoiceNo);
+            // Defence-in-depth: validate the built doc structurally. Catches any
+            // future drift where buildInvoiceDocument emits an element shape that
+            // pretext-pdf's renderer would reject mid-render.
+            const safetyError = runDocumentSafetyChecks(doc);
+            if (safetyError)
+                return safetyError;
             const bytes = await render(doc);
             const base64 = toBase64(bytes);
             const filename = (args.filename || `invoice-${invoiceNo}`) + '.pdf';

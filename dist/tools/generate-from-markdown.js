@@ -1,6 +1,7 @@
 import { render } from 'pretext-pdf';
 import { markdownToContent } from 'pretext-pdf/markdown';
 import { toBase64 } from '../utils/base64.js';
+import { runDocumentSafetyChecks } from '../utils/safety.js';
 export const generateFromMarkdownTool = {
     schema: {
         name: 'generate_from_markdown',
@@ -18,8 +19,8 @@ export const generateFromMarkdownTool = {
                 },
                 page_size: {
                     type: 'string',
-                    enum: ['A4', 'Letter', 'Legal'],
-                    description: 'Page size. Default: A4',
+                    enum: ['A4', 'Letter', 'Legal', 'A3', 'A5', 'Tabloid'],
+                    description: 'Page size. Default: A4. Matches the NamedPageSize union exported by pretext-pdf.',
                 },
                 font_size: {
                     type: 'number',
@@ -44,7 +45,7 @@ export const generateFromMarkdownTool = {
                     isError: true,
                 };
             }
-            const VALID_PAGE_SIZES = ['A4', 'Letter', 'Legal'];
+            const VALID_PAGE_SIZES = ['A4', 'Letter', 'Legal', 'A3', 'A5', 'Tabloid'];
             if (args.page_size !== undefined && !VALID_PAGE_SIZES.includes(String(args.page_size))) {
                 return {
                     content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `page_size must be one of: ${VALID_PAGE_SIZES.join(', ')}. Received: "${String(args.page_size)}"` }) }],
@@ -64,6 +65,12 @@ export const generateFromMarkdownTool = {
                 defaultFontSize: typeof args.font_size === 'number' ? args.font_size : 12,
                 content,
             };
+            // Defence-in-depth: validate the built doc structurally before render.
+            // Markdown can't introduce __proto__ keys, but content shape drift in
+            // the markdown parser would otherwise surface mid-render.
+            const safetyError = runDocumentSafetyChecks(doc);
+            if (safetyError)
+                return safetyError;
             const bytes = await render(doc);
             const base64 = toBase64(bytes);
             const filename = (args.filename ?? 'document') + '.pdf';
