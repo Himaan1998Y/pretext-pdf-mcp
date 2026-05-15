@@ -34,7 +34,11 @@
     "build": "tsc",
     "dev": "tsx src/index.ts",
     "pretest": "npm run build",
-    "test": "tsx --test test/*.test.ts"
+    "test": "tsx --test test/*.test.ts",
+    "smithery:sync": "node scripts/sync-smithery-version.mjs",
+    "smithery:check": "node scripts/sync-smithery-version.mjs --check",
+    "version": "npm run smithery:sync && git add smithery.yaml",
+    "prepublishOnly": "npm run smithery:check"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

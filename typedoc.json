@@ -1,0 +1,27 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "src/index.ts",
+    "src/tools/generate-pdf.ts",
+    "src/tools/generate-invoice.ts",
+    "src/tools/generate-report.ts",
+    "src/tools/generate-from-markdown.ts",
+    "src/tools/list-elements.ts",
+    "src/tools/validate-document.ts"
+  ],
+  "entryPointStrategy": "expand",
+  "out": "docs/api",
+  "tsconfig": "tsconfig.json",
+  "name": "pretext-pdf-mcp",
+  "readme": "README.md",
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true,
+  "categorizeByGroup": true,
+  "sort": ["source-order"],
+  "githubPages": false,
+  "navigationLinks": {
+    "GitHub": "https://github.com/Himaan1998Y/pretext-pdf-mcp",
+    "npm": "https://www.npmjs.com/package/pretext-pdf-mcp"
+  }
+}

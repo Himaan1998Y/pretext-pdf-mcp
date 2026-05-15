@@ -11,8 +11,9 @@ Section heading with automatic bookmarks. Key props: \`level\` (1–4, required)
 Example: \`{ type: "heading", level: 1, text: "Introduction", color: "#1a1a2e" }\`
 
 ## rich-paragraph
-Paragraph with per-span formatting. Key props: \`lines\` (array of RichLine, each with \`spans\` array). Each span: \`text\`, \`fontWeight\`, \`color\`, \`fontSize\`, \`italic\`, \`underline\`, \`strikethrough\`, \`url\`, \`href\` (internal anchor link).
-Example: \`{ type: "rich-paragraph", lines: [{ spans: [{ text: "Bold", fontWeight: 700 }, { text: " normal" }] }] }\`
+Paragraph with per-span formatting. Key props: \`spans\` (required, array of InlineSpan), \`fontSize\`, \`lineHeight\`, \`align\` (left|center|right|justify), \`dir\` (ltr|rtl|auto), \`bgColor\`, \`spaceBefore\`, \`spaceAfter\`, \`keepTogether\`, \`columns\`, \`columnGap\`, \`letterSpacing\`, \`smallCaps\`.
+Each \`InlineSpan\` has: \`text\` (required), \`fontWeight\` (400|700), \`fontStyle\` ('normal'|'italic'), \`fontFamily\`, \`fontSize\` (overrides element fontSize), \`color\` (#hex), \`dir\`, \`underline\`, \`strikethrough\`, \`url\` (clickable link), \`href\` (alias for url; '#anchor' for internal jump), \`verticalAlign\` ('superscript'|'subscript'), \`smallCaps\`, \`letterSpacing\`, \`footnoteRef\` (id of a footnote-def).
+Example: \`{ type: "rich-paragraph", spans: [{ text: "Bold ", fontWeight: 700 }, { text: "and italic", fontStyle: "italic" }, { text: " normal." }] }\`
 
 ## table
 Data table with optional header rows, borders, and column alignment. Key props: \`columns\` (array of \`{width, align}\`; width can be pt number, \`"2*"\` fraction, or \`"auto"\`), \`rows\` (array of \`{cells, isHeader, bgColor}\`), \`headerBgColor\`, \`borderColor\`, \`borderWidth\`, \`cellPaddingH\`, \`cellPaddingV\`, \`spaceAfter\`.
@@ -94,7 +95,7 @@ Example: \`{ type: "float-group", float: "left", image: { src: "/abs/path/logo.p
 ---
 
 ## Document-level options (PdfDocument)
-- \`pageSize\`: 'A4'|'Letter'|'Legal'|'A3'|'A5' or \`[width, height]\` in pt. Default: 'A4'
+- \`pageSize\`: 'A4'|'Letter'|'Legal'|'A3'|'A5'|'Tabloid' or \`[width, height]\` in pt. Default: 'A4'
 - \`margins\`: \`{ top, bottom, left, right }\` in pt. Default: all 72pt
 - \`defaultFont\`: font family name. Default: 'Inter'
 - \`defaultFontSize\`: pt. Default: 12
