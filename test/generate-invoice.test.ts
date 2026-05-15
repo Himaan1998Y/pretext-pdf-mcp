@@ -122,4 +122,51 @@ describe('generate_invoice tool', () => {
     assert.equal(parsed.success, true)
     assert.ok(parsed.size_bytes > 1000)
   })
+
+  describe('Security: prototype-pollution hardening', () => {
+    it('rejects __proto__ key on top-level input', async () => {
+      const malicious = JSON.parse(
+        `{"from":{"company":"X"},"to":{"company":"Y"},"items":[{"description":"a","quantity":1,"rate":1}],"__proto__":{"polluted":true}}`,
+      )
+      const result = await generateInvoiceTool.handler(malicious)
+      assert.equal(result.isError, true)
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.success, false)
+      assert.match(parsed.message, /unsafe keys|__proto__/)
+    })
+
+    it('rejects constructor key nested under items', async () => {
+      const args: any = {
+        from: BASE_FROM,
+        to: BASE_TO,
+        items: [{ description: 'Service', quantity: 1, rate: 100 }],
+      }
+      Object.defineProperty(args.items[0], 'constructor', {
+        value: { prototype: { polluted: true } },
+        enumerable: true,
+      })
+      const result = await generateInvoiceTool.handler(args)
+      assert.equal(result.isError, true)
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.success, false)
+      assert.match(parsed.message, /unsafe keys|constructor/)
+    })
+
+    it('rejects prototype key nested under from', async () => {
+      const args: any = {
+        from: { ...BASE_FROM },
+        to: BASE_TO,
+        items: [{ description: 'Service', quantity: 1, rate: 100 }],
+      }
+      Object.defineProperty(args.from, 'prototype', {
+        value: { polluted: true },
+        enumerable: true,
+      })
+      const result = await generateInvoiceTool.handler(args)
+      assert.equal(result.isError, true)
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.success, false)
+      assert.match(parsed.message, /unsafe keys|prototype/)
+    })
+  })
 })

@@ -188,4 +188,33 @@ describe('generate_report tool — validation errors', () => {
     const parsed = JSON.parse(result.content[0].text as string)
     assert.match(parsed.message, /sections\[1\]/)
   })
+
+  describe('Security: prototype-pollution hardening', () => {
+    it('rejects __proto__ key on top-level input', async () => {
+      const malicious = JSON.parse(
+        `{"title":"X","sections":[{"heading":"a","body":"b"}],"__proto__":{"polluted":true}}`,
+      )
+      const result = await generateReportTool.handler(malicious)
+      assert.equal(result.isError, true)
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.success, false)
+      assert.match(parsed.message, /unsafe keys|__proto__/)
+    })
+
+    it('rejects constructor key nested under a section', async () => {
+      const args: any = {
+        title: 'My Report',
+        sections: [{ heading: 'Intro', body: 'Body text.' }],
+      }
+      Object.defineProperty(args.sections[0], 'constructor', {
+        value: { prototype: { polluted: true } },
+        enumerable: true,
+      })
+      const result = await generateReportTool.handler(args)
+      assert.equal(result.isError, true)
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.success, false)
+      assert.match(parsed.message, /unsafe keys|constructor/)
+    })
+  })
 })

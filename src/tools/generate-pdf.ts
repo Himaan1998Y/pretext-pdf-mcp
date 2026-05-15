@@ -1,5 +1,6 @@
-import { render, validateDocument } from 'pretext-pdf'
+import { render } from 'pretext-pdf'
 import { toBase64 } from '../utils/base64.js'
+import { runDocumentSafetyChecks } from '../utils/safety.js'
 
 export const generatePdfTool = {
   schema: {
@@ -32,26 +33,16 @@ export const generatePdfTool = {
           isError: true,
         }
       }
-      // Reject prototype-pollution payloads before any processing
-      const docStr = JSON.stringify(args.document)
-      if (docStr.includes('"__proto__"') || docStr.includes('"constructor"')) {
-        return {
-          content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'Prototype-polluted keys are not allowed' }) }],
-          isError: true,
-        }
-      }
 
-      // Validate before render — generate_pdf must not bypass schema checks
-      const validation = validateDocument(args.document as any)
-      if (!validation.valid) {
-        const messages = validation.errors.map((e: { path: string; message: string }) => `${e.path}: ${e.message}`).join('; ')
-        return {
-          content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: messages }) }],
-          isError: true,
-        }
-      }
+      // Defence-in-depth: prototype-pollution guard + schema validation.
+      // Shared with generate_invoice, generate_report, and generate_from_markdown.
+      const safetyError = runDocumentSafetyChecks(args.document)
+      if (safetyError) return safetyError
 
-      const bytes = await render(args.document as any)
+      const doc = args.document as Record<string, unknown>
+
+      // Safe cast to PdfDocument: runDocumentSafetyChecks proved doc conforms structurally
+      const bytes = await render(doc as unknown as Parameters<typeof render>[0])
       const base64 = toBase64(bytes)
       const filename = ((args.filename as string) || 'document') + '.pdf'
       return {

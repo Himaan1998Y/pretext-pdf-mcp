@@ -85,4 +85,143 @@ describe('generate_pdf tool', () => {
     assert.equal(parsed.success, false)
     assert.ok(parsed.error, 'error code should be present')
   })
+
+  // Phase C: Structural prototype-pollution tests
+  describe('Security: prototype-pollution hardening', () => {
+    it('rejects constructor key in nested object', async () => {
+      const doc: any = {
+        content: [
+          {
+            type: 'paragraph',
+            text: 'Hello',
+          },
+        ],
+      }
+      // Explicitly set the dangerous key after object construction
+      Object.defineProperty(doc.content[0], 'constructor', {
+        value: { prototype: { polluted: true } },
+        enumerable: true,
+      })
+
+      const result = await generatePdfTool.handler({ document: doc })
+      assert.equal(result.isError, true)
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.success, false)
+      assert.match(parsed.message, /unsafe keys|constructor/)
+    })
+
+    it('rejects prototype key in deeply nested object', async () => {
+      const doc: any = {
+        content: [
+          {
+            type: 'table',
+            columns: [{ width: 100 }],
+            rows: [
+              {
+                cells: [
+                  {
+                    text: 'Safe text',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }
+      // Set prototype key at depth 4
+      Object.defineProperty(doc.content[0].rows[0].cells[0], 'prototype', {
+        value: { polluted: true },
+        enumerable: true,
+      })
+
+      const result = await generatePdfTool.handler({ document: doc })
+      assert.equal(result.isError, true)
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.success, false)
+      assert.match(parsed.message, /unsafe keys|prototype/)
+    })
+
+    it('rejects __proto__ via Object.assign attack', async () => {
+      const payload = {
+        content: [{ type: 'paragraph', text: 'Hello' }],
+      }
+      // Simulate JSON.parse attack: __proto__ from malicious JSON
+      const malicious = JSON.parse('{"content":[{"type":"paragraph","text":"Hello"}],"__proto__":{"polluted":true}}')
+
+      const result = await generatePdfTool.handler({ document: malicious })
+      assert.equal(result.isError, true)
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.success, false)
+      assert.match(parsed.message, /unsafe keys|__proto__/)
+    })
+
+    it('accepts paragraph with "__proto__" as literal text (no false positive)', async () => {
+      // The string "__proto__" appearing as paragraph text should not trigger the check
+      // because the check looks at object keys, not text values.
+      const result = await generatePdfTool.handler({
+        document: {
+          content: [{ type: 'paragraph', text: 'This mentions "__proto__" in the actual text.' }],
+        },
+      })
+      assert.equal(result.isError, undefined, 'should succeed because text is not a key')
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.success, true)
+    })
+
+    it('accepts object with "prototype" in a string value (not a key)', async () => {
+      const result = await generatePdfTool.handler({
+        document: {
+          content: [
+            {
+              type: 'paragraph',
+              text: 'JavaScript prototype property is important.',
+            },
+          ],
+        },
+      })
+      assert.equal(result.isError, undefined)
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.success, true)
+    })
+
+    it('rejects constructor in content array element', async () => {
+      const doc: any = {
+        content: [
+          {
+            type: 'heading',
+            level: 1,
+            text: 'Title',
+          },
+        ],
+      }
+      Object.defineProperty(doc.content[0], 'constructor', {
+        value: { prototype: { polluted: true } },
+        enumerable: true,
+      })
+
+      const result = await generatePdfTool.handler({ document: doc })
+      assert.equal(result.isError, true)
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.success, false)
+    })
+
+    it('rejects multiple unsafe keys in single document', async () => {
+      const doc: any = {
+        content: [{ type: 'paragraph', text: 'Hello' }],
+      }
+      Object.defineProperty(doc, 'constructor', {
+        value: { prototype: { polluted: true } },
+        enumerable: true,
+      })
+      Object.defineProperty(doc, '__proto__', {
+        value: { alsoPolluted: true },
+        enumerable: true,
+      })
+
+      const result = await generatePdfTool.handler({ document: doc })
+      assert.equal(result.isError, true)
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.success, false)
+    })
+  })
 })

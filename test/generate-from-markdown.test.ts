@@ -69,4 +69,30 @@ describe('generate_from_markdown tool', () => {
       assert.equal(result.isError, undefined, `font_size ${font_size} should be accepted`)
     }
   })
+
+  describe('Security: defence-in-depth document validation', () => {
+    it('accepts markdown that mentions __proto__ as plain text (no false positive)', async () => {
+      // The string "__proto__" appearing in markdown body should not trigger
+      // the structural prototype-pollution check, because the check inspects
+      // object keys produced by the parser, not text content.
+      const result = await generateFromMarkdownTool.handler({
+        markdown: 'See JavaScript docs for `__proto__` and `constructor.prototype`.',
+      })
+      assert.equal(result.isError, undefined)
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.success, true)
+    })
+
+    it('runs validateDocument on the built document before render', async () => {
+      // Sanity check: well-formed markdown produces a doc that passes the
+      // safety check and renders to a valid PDF.
+      const result = await generateFromMarkdownTool.handler({
+        markdown: '# Title\n\nParagraph one.\n\n- Item 1\n- Item 2',
+      })
+      assert.equal(result.isError, undefined)
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.success, true)
+      assert.ok(parsed.size_bytes > 1000)
+    })
+  })
 })
