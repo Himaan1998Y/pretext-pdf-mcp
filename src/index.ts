@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
+import { timingSafeEqual } from 'node:crypto'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
@@ -29,6 +30,43 @@ const SERVER_VERSION = pkg.version
 // ─── Structured logging ───────────────────────────────────────────────────────
 function log(level: 'info' | 'warn' | 'error', msg: string, meta?: Record<string, unknown>) {
   process.stderr.write(JSON.stringify({ ts: new Date().toISOString(), level, msg, ...meta }) + '\n')
+}
+
+// ─── Concurrency limit ────────────────────────────────────────────────────────
+// Bounds the number of in-flight render operations to prevent OOM / event-loop
+// starvation under burst load. Render is CPU-heavy and synchronous in places,
+// so an unbounded queue can wedge the server. Configurable via MCP_MAX_CONCURRENT.
+const MAX_CONCURRENT_RENDERS = Number(process.env.MCP_MAX_CONCURRENT ?? 4)
+let activeRenders = 0
+
+// ─── Auth helpers ─────────────────────────────────────────────────────────────
+/**
+ * Constant-time bearer-token check. Returns true when the request is authorized,
+ * false when MCP_API_KEY is set and the request does not match. When MCP_API_KEY
+ * is unset, all requests are allowed (this is the default localhost-only mode).
+ */
+function isAuthorized(req: import('node:http').IncomingMessage): boolean {
+  const expectedKey = process.env.MCP_API_KEY
+  if (!expectedKey) return true
+  const auth = req.headers.authorization ?? ''
+  const expected = `Bearer ${expectedKey}`
+  const authBuf = Buffer.from(auth)
+  const expectedBuf = Buffer.from(expected)
+  if (authBuf.length !== expectedBuf.length) return false
+  return timingSafeEqual(authBuf, expectedBuf)
+}
+
+function sendUnauthorized(res: import('node:http').ServerResponse): void {
+  res.writeHead(401, { 'Content-Type': 'application/json' })
+  res.end(JSON.stringify({ error: 'Unauthorized' }))
+}
+
+function sendBusy(res: import('node:http').ServerResponse): void {
+  res.writeHead(429, {
+    'Content-Type': 'application/json',
+    'Retry-After': '5',
+  })
+  res.end(JSON.stringify({ error: 'Server busy, retry shortly', code: 'RATE_LIMITED' }))
 }
 
 // ─── Input Validation ─────────────────────────────────────────────────────────
@@ -143,10 +181,19 @@ if (port) {
       return
     }
 
-    // Health check
+    // Health check — intentionally not behind auth so probes/load balancers
+    // can verify liveness without sharing the API key.
     if (url.pathname === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ ok: true, service: 'pretext-pdf-mcp' }))
+      return
+    }
+
+    // Bearer-token check for any authenticated endpoint. When MCP_API_KEY is
+    // unset the check is a no-op — see startup guard for the public-bind requirement.
+    if (!isAuthorized(req)) {
+      log('warn', 'unauthorized request', { path: url.pathname })
+      sendUnauthorized(res)
       return
     }
 
@@ -178,6 +225,13 @@ if (port) {
         return
       }
 
+      // Concurrency guard — cap in-flight renders to protect the event loop.
+      if (activeRenders >= MAX_CONCURRENT_RENDERS) {
+        log('warn', 'render concurrency limit reached', { endpoint: '/api/generate', active: activeRenders, max: MAX_CONCURRENT_RENDERS })
+        sendBusy(res)
+        return
+      }
+      activeRenders++
       try {
         // Null/type guard: ensure body.data is an object before schema validation
         validatePdfDocumentInput(body.data)
@@ -196,9 +250,14 @@ if (port) {
         const isClient = isClientError(err)
         const statusCode = isClient ? 400 : 500
         const errorCode = err instanceof PretextPdfError ? err.code : 'UNKNOWN_ERROR'
-        log(isClient ? 'warn' : 'error', 'pdf generation failed', { endpoint: '/api/generate', code: errorCode, statusCode })
+        log(isClient ? 'warn' : 'error', 'pdf generation failed', { endpoint: '/api/generate', code: errorCode, statusCode, message: msg })
+        // Only PretextPdfError messages are intentional user-facing strings.
+        // Unknown errors may leak stack traces, file paths, or other internals — sanitize them.
+        const safeMessage = err instanceof PretextPdfError ? err.message : 'Internal server error'
         res.writeHead(statusCode, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ error: msg, code: errorCode }))
+        res.end(JSON.stringify({ error: safeMessage, code: errorCode }))
+      } finally {
+        activeRenders--
       }
       return
     }
@@ -230,13 +289,25 @@ if (port) {
         return
       }
 
-      log('info', 'mcp request received', { endpoint: '/mcp', size_bytes: mcpSize })
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined,
-      })
-      const server = createServer()
-      await server.connect(transport)
-      await transport.handleRequest(req, res, body)
+      // Concurrency guard — MCP tool calls can invoke render(), so we cap them
+      // by the same global counter used for /api/generate.
+      if (activeRenders >= MAX_CONCURRENT_RENDERS) {
+        log('warn', 'render concurrency limit reached', { endpoint: '/mcp', active: activeRenders, max: MAX_CONCURRENT_RENDERS })
+        sendBusy(res)
+        return
+      }
+      activeRenders++
+      try {
+        log('info', 'mcp request received', { endpoint: '/mcp', size_bytes: mcpSize })
+        const transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: undefined,
+        })
+        const server = createServer()
+        await server.connect(transport)
+        await transport.handleRequest(req, res, body)
+      } finally {
+        activeRenders--
+      }
       return
     }
 
@@ -247,12 +318,23 @@ if (port) {
       log('error', 'unhandled http handler error', { msg })
       if (!res.headersSent) {
         res.writeHead(500, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ error: 'Internal server error', message: msg }))
+        // Do not leak err.message to the client — keep details in stderr only.
+        res.end(JSON.stringify({ error: 'Internal server error' }))
       }
     }
   })
 
   const host = process.env.MCP_HOST ?? '127.0.0.1'
+  // Public-bind guard — refuse to start on a non-loopback interface without
+  // an API key configured. Prevents accidental exposure of an unauthenticated
+  // PDF render endpoint when MCP_HOST is set to 0.0.0.0 or a LAN address.
+  const isPublicBind = host !== '127.0.0.1' && host !== '::1' && host !== 'localhost'
+  if (isPublicBind && !process.env.MCP_API_KEY) {
+    process.stderr.write('[FATAL] MCP_HOST is set to a public address but MCP_API_KEY is not configured.\n')
+    process.stderr.write('[FATAL] Refusing to start without authentication on a public binding.\n')
+    process.stderr.write('[FATAL] Set MCP_API_KEY env var or bind to 127.0.0.1.\n')
+    process.exit(1)
+  }
   httpServer.listen(port, host, () => {
     process.stderr.write(`pretext-pdf-mcp HTTP server listening on ${host}:${port}\n`)
   })

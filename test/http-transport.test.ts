@@ -235,7 +235,9 @@ describe('bind regression — Phase 0 lock-in', () => {
   })
 
   it('MCP_HOST=0.0.0.0 enables all-interface binding — stderr log shows host=0.0.0.0:<port>', async () => {
-    const { proc, port, bindLog } = await spawnHttpServer({ MCP_HOST: '0.0.0.0' })
+    // Public-bind requires MCP_API_KEY — see startup guard in src/index.ts.
+    // Supply a key here so the binding test exercises the listen path.
+    const { proc, port, bindLog } = await spawnHttpServer({ MCP_HOST: '0.0.0.0', MCP_API_KEY: 'test-key' })
     assert.match(
       bindLog,
       new RegExp(`listening on 0\\.0\\.0\\.0:${port}\\b`),
@@ -449,5 +451,135 @@ describe('misc', () => {
     )
 
     await Promise.race([exitPromise, timeoutPromise])
+  })
+})
+
+// ─── Security: public-bind guard ──────────────────────────────────────────────
+
+/**
+ * Spawn the server and wait for it to exit with a non-zero code (i.e. refuse to start).
+ * Returns the exit code and accumulated stderr. Used to verify the public-bind guard.
+ */
+async function spawnExpectFatal(env: Record<string, string>): Promise<{ code: number | null; stderr: string }> {
+  const port = randomPort()
+  const proc = spawn(process.execPath, [SERVER_PATH], {
+    stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...process.env, MCP_PORT: String(port), ...env },
+  })
+
+  return new Promise((resolve, reject) => {
+    let stderr = ''
+    proc.stderr.on('data', (c: Buffer) => { stderr += c.toString() })
+    const timer = setTimeout(() => {
+      try { proc.kill('SIGKILL') } catch { /* dead */ }
+      reject(new Error(`Server did not exit within 5s — stderr so far: ${stderr.substring(0, 300)}`))
+    }, 5000)
+    proc.on('exit', (code) => {
+      clearTimeout(timer)
+      resolve({ code, stderr })
+    })
+    proc.on('error', (err) => { clearTimeout(timer); reject(err) })
+  })
+}
+
+describe('security: public-bind guard', () => {
+  it('refuses to start when MCP_HOST=0.0.0.0 and MCP_API_KEY is not set', async () => {
+    const { code, stderr } = await spawnExpectFatal({ MCP_HOST: '0.0.0.0' })
+    assert.equal(code, 1, `Expected exit code 1, got ${code}. Stderr: ${stderr.substring(0, 300)}`)
+    assert.ok(stderr.includes('[FATAL]'), `Expected FATAL log in stderr. Got: ${stderr.substring(0, 300)}`)
+    assert.ok(stderr.includes('MCP_API_KEY'), `Expected MCP_API_KEY mention in stderr. Got: ${stderr.substring(0, 300)}`)
+  })
+
+  it('refuses to start when MCP_HOST is a LAN address without MCP_API_KEY', async () => {
+    const { code } = await spawnExpectFatal({ MCP_HOST: '192.168.1.50' })
+    assert.equal(code, 1, `Expected exit code 1, got ${code}`)
+  })
+
+  it('starts normally when MCP_HOST=0.0.0.0 and MCP_API_KEY is set', async () => {
+    const { proc, bindLog } = await spawnHttpServer({ MCP_HOST: '0.0.0.0', MCP_API_KEY: 'test-key' })
+    assert.ok(bindLog.includes('listening on'), `Expected listening message, got: ${bindLog}`)
+    killProc(proc)
+  })
+})
+
+describe('security: bearer auth', () => {
+  let proc: ChildProcessWithoutNullStreams
+  let port: number
+  const API_KEY = 'super-secret-test-key'
+
+  before(async () => {
+    // Use 127.0.0.1 (default) plus an API key — auth is active without tripping
+    // the public-bind guard.
+    const spawned = await spawnHttpServer({ MCP_API_KEY: API_KEY })
+    proc = spawned.proc
+    port = spawned.port
+  })
+
+  after(() => {
+    killProc(proc)
+  })
+
+  it('rejects /api/generate with no Authorization header (401)', async () => {
+    const body = JSON.stringify({ data: { content: [{ type: 'paragraph', text: 'x' }] } })
+    const res = await httpPost(port, '/api/generate', body)
+    assert.equal(res.status, 401, `Expected 401, got ${res.status}`)
+  })
+
+  it('rejects /api/generate with wrong bearer token (401)', async () => {
+    const body = JSON.stringify({ data: { content: [{ type: 'paragraph', text: 'x' }] } })
+    const res = await httpPost(port, '/api/generate', body, { Authorization: 'Bearer wrong-key' })
+    assert.equal(res.status, 401, `Expected 401, got ${res.status}`)
+  })
+
+  it('accepts /api/generate with correct bearer token', async () => {
+    const body = JSON.stringify({ data: { content: [{ type: 'paragraph', text: 'x' }] } })
+    const res = await httpPost(port, '/api/generate', body, { Authorization: `Bearer ${API_KEY}` })
+    assert.equal(res.status, 200, `Expected 200, got ${res.status}. Body: ${res.body.toString().substring(0, 200)}`)
+  })
+
+  it('/health remains accessible without auth (probes do not have the key)', async () => {
+    const res = await httpGet(port, '/health')
+    assert.equal(res.status, 200, `Expected 200, got ${res.status}`)
+  })
+
+  it('rejects /mcp with no Authorization header (401)', async () => {
+    const res = await httpPost(port, '/mcp', JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }))
+    assert.equal(res.status, 401, `Expected 401, got ${res.status}`)
+  })
+})
+
+describe('security: error message sanitization', () => {
+  let proc: ChildProcessWithoutNullStreams
+  let port: number
+
+  before(async () => {
+    const spawned = await spawnHttpServer()
+    proc = spawned.proc
+    port = spawned.port
+  })
+
+  after(() => {
+    killProc(proc)
+  })
+
+  it('does not leak unknown error messages — only structured error+code returned', async () => {
+    // Invalid JSON triggers a 400 with a fixed error string.
+    const res = await httpPost(port, '/api/generate', 'not json{')
+    assert.equal(res.status, 400)
+    const body = JSON.parse(res.body.toString('utf8')) as Record<string, unknown>
+    // The error message should be a fixed string, not a leaked parser detail.
+    assert.equal(body.error, 'Invalid JSON body', `Expected fixed message, got: ${JSON.stringify(body)}`)
+  })
+
+  it('returns valid PretextPdfError messages (these are intentional user-facing)', async () => {
+    // Body shape valid JSON but missing data → triggers VALIDATION_ERROR
+    const res = await httpPost(port, '/api/generate', JSON.stringify({}))
+    assert.equal(res.status, 400, `Expected 400, got ${res.status}. Body: ${res.body.toString()}`)
+    const body = JSON.parse(res.body.toString('utf8')) as Record<string, unknown>
+    assert.equal(body.code, 'VALIDATION_ERROR')
+    // The user-facing message is intentionally surfaced because it comes from PretextPdfError.
+    assert.ok(typeof body.error === 'string' && (body.error as string).length > 0)
+    // It must not equal the sanitized fallback — confirming PretextPdfError messages flow through.
+    assert.notEqual(body.error, 'Internal server error')
   })
 })

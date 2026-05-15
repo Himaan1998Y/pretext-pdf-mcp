@@ -105,4 +105,42 @@ describe('validate_document tool', () => {
     const parsed = JSON.parse(result.content[0].text as string)
     assert.equal(parsed.valid, true)
   })
+
+  describe('Security: prototype-pollution hardening', () => {
+    it('rejects __proto__ key on top-level input', async () => {
+      const doc: Record<string, unknown> = { content: [{ type: 'paragraph', text: 'x' }] }
+      // Inject __proto__ as an own property without polluting Object.prototype
+      Object.defineProperty(doc, '__proto__', { value: { polluted: true }, enumerable: true, configurable: true, writable: true })
+      const result = await validateDocumentTool.handler({ document: doc })
+      assert.equal(result.isError, undefined)
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.valid, false)
+      assert.equal(parsed.errors[0].code, 'INVALID_INPUT')
+      assert.ok(/unsafe property keys/i.test(parsed.errors[0].message), `Expected unsafe-keys message, got: ${parsed.errors[0].message}`)
+    })
+
+    it('rejects constructor key nested in content element', async () => {
+      const result = await validateDocumentTool.handler({
+        document: {
+          content: [{ type: 'paragraph', text: 'x', constructor: { evil: true } } as any],
+        },
+      })
+      assert.equal(result.isError, undefined)
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.valid, false)
+      assert.ok(/unsafe property keys/i.test(parsed.errors[0].message))
+    })
+
+    it('rejects prototype key nested deeply', async () => {
+      const result = await validateDocumentTool.handler({
+        document: {
+          content: [{ type: 'table', rows: [[{ prototype: { evil: true } } as any]] }],
+        },
+      })
+      assert.equal(result.isError, undefined)
+      const parsed = JSON.parse(result.content[0].text as string)
+      assert.equal(parsed.valid, false)
+      assert.ok(/unsafe property keys/i.test(parsed.errors[0].message))
+    })
+  })
 })

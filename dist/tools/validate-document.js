@@ -1,4 +1,5 @@
 import { validateDocument } from 'pretext-pdf';
+import { hasUnsafeKeys } from '../utils/safety.js';
 export const validateDocumentTool = {
     schema: {
         name: 'validate_document',
@@ -33,6 +34,30 @@ export const validateDocumentTool = {
                             errors: [{
                                     path: 'document',
                                     message: 'document must be a non-null object',
+                                    severity: 'error',
+                                    code: 'INVALID_INPUT',
+                                }],
+                            warnings: [],
+                        }),
+                    },
+                ],
+            };
+        }
+        // Defence-in-depth: reject prototype-pollution payloads before structural validation.
+        // Other tools route through runDocumentSafetyChecks(); this tool calls validateDocument
+        // directly, so the check must live here too.
+        if (hasUnsafeKeys(doc)) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: JSON.stringify({
+                            valid: false,
+                            error_count: 1,
+                            warning_count: 0,
+                            errors: [{
+                                    path: 'document',
+                                    message: 'Document contains unsafe property keys (__proto__, constructor, or prototype)',
                                     severity: 'error',
                                     code: 'INVALID_INPUT',
                                 }],
