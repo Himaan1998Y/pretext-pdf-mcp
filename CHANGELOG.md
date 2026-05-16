@@ -7,18 +7,83 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased]
+## [1.4.12] — 2026-05-16
+
+HTTP transport hardening + post-audit safety polish.
+
+### Added
+
+- **Public-bind authentication guard** (`src/index.ts`) — Server refuses to
+  start if `MCP_HOST` is set to a non-loopback address (e.g., `0.0.0.0`)
+  without `MCP_API_KEY` also configured. Eliminates the silent footgun
+  where a misconfigured deployment exposes unauthenticated PDF rendering
+  to the network.
+
+- **Bearer-token auth for HTTP endpoints** (`src/index.ts`) — When
+  `MCP_API_KEY` is set, `/api/generate` and `/mcp` require
+  `Authorization: Bearer <key>` (constant-time comparison via
+  `crypto.timingSafeEqual`). `/health` and OPTIONS preflight remain open.
+
+- **Concurrent render limit** (`src/index.ts`) — In-process semaphore caps
+  in-flight renders at `MCP_MAX_CONCURRENT` (default 4). Excess requests
+  receive `429 Too Many Requests` with `Retry-After: 5`. Prevents DoS via
+  N-parallel CPU-heavy renders.
+
+- **`hasUnsafeKeys` guard on `validate_document`** (`src/tools/validate-document.ts`) —
+  The one tool that previously bypassed the prototype-pollution check now
+  applies the same defense-in-depth as the four render tools. +3 tests
+  covering top-level `__proto__`, nested `constructor`, deeply-nested
+  `prototype`.
+
+### Fixed
+
+- **HTTP error message leakage** (`src/index.ts:~196, ~246`) — Both the
+  `/api/generate` 500-path and the top-level catch previously returned
+  `err.message` verbatim to the client. Internal file system paths,
+  pdf-lib stack details, and third-party error fingerprints could leak.
+  Both paths now log the full message to stderr and return only a
+  sanitized envelope (`PretextPdfError` messages still pass through since
+  they are designed for user consumption).
+
+- **Misleading `generate_invoice` tool description** — Previous text
+  claimed automatic IGST/CGST inter-vs-intra-state routing via
+  `supplier.state`/`buyer.state`. The schema has no `state` field on
+  `from`/`to` and the routing was never wired up. Description now
+  accurately states: `gst_rate` per-item sums as IGST in totals;
+  CGST/SGST routing not currently supported.
 
 ### Changed
 
-- Extracted shared document-safety guards into `src/utils/safety.ts`.
-- Corrected `generate_invoice` tool description: removed claim of automatic
-  IGST/CGST inter-vs-intra-state routing (the schema has no `state` field on
-  `from`/`to`, so that routing was never wired up).
-- Replaced magic color literals in `generate-invoice.ts` with named constants
-  (`INVOICE_PRIMARY_COLOR`, `INVOICE_MUTED_COLOR`).
-- Tightened internal `buildInvoiceDocument` / `buildReportDocument` return
-  type from `any` to `PdfDocument` from `pretext-pdf`.
+- **Shared safety utilities** (`src/utils/safety.ts`) — Extracted
+  `hasUnsafeKeys()` and `runDocumentSafetyChecks()` into a shared module.
+  All five user-input-accepting tools (`generate_pdf`, `generate_invoice`,
+  `generate_report`, `generate_from_markdown`, `validate_document`) now
+  use the unified entry point.
+
+- **Build-time type tightening** — Changed `buildInvoiceDocument` and
+  `buildReportDocument` return types from `any` to `PdfDocument` from
+  `pretext-pdf`, restoring type coverage to ~200 lines of document
+  construction logic that was previously type-erased.
+
+- **Magic color literals replaced with named constants** — `'#1a1a2e'`
+  (9 sites) → `INVOICE_PRIMARY_COLOR`; `'#aaaaaa'` (2 sites) →
+  `INVOICE_MUTED_COLOR` in `src/tools/generate-invoice.ts`.
+
+- **`smithery.yaml` synced to package.json** — `1.4.11` → `1.4.12` via
+  `scripts/sync-smithery-version.mjs` (now wired into the `version`
+  npm hook and `prepublishOnly` gate).
+
+### Notes
+
+- Underlying `pretext-pdf` library bumped to **v1.2.0** (discriminated
+  unions on public types, undici-pinned SSRF defense, concurrency-safe
+  validator, `@internal` type leakage closed). See pretext-pdf CHANGELOG
+  for full details.
+
+- **HTTP transport backlog (v1.4.13+):** Output PDF size cap, JSON depth
+  pre-parse check, generate_report `sections` count cap, markdown HTML
+  expansion cap, `405 Method Not Allowed` on wrong method, remote IP in
+  rejection logs.
 
 ---
 

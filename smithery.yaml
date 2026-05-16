@@ -1,5 +1,5 @@
 name: pretext-pdf
-version: 1.4.11
+version: 1.4.12
 description: "PDF generation for AI agents. Create GST invoices, reports, tables, forms, and markdown-to-PDF from structured JSON — no headless browser, pure Node.js."
 startCommand:
   type: stdio
