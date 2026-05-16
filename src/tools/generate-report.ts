@@ -1,4 +1,5 @@
 import { render } from 'pretext-pdf'
+import type { PdfDocument } from 'pretext-pdf'
 import { toBase64 } from '../utils/base64.js'
 import { hasUnsafeKeys, runDocumentSafetyChecks } from '../utils/safety.js'
 
@@ -29,7 +30,7 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-function buildReportDocument(input: ReportInput): any {
+function buildReportDocument(input: ReportInput): PdfDocument {
   const includeToc = input.include_toc !== false
   const date = input.date ?? todayISO()
 
@@ -238,8 +239,12 @@ export const generateReportTool = {
 
   handler: async (args: Record<string, unknown>) => {
     try {
-      // Defence-in-depth: reject prototype-pollution payloads before any
-      // field-level processing.
+      // Early guard: catch __proto__ / constructor / prototype pollution before
+      // iterating section / table / callout field values below. The
+      // constructed `doc` is built internally and cannot carry pollution from
+      // args, but a polluted args object could crash field accessors mid-loop.
+      // A second `runDocumentSafetyChecks(doc)` call later validates the
+      // *built* doc as defence-in-depth against future builder drift.
       if (hasUnsafeKeys(args)) {
         return {
           content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'Input contains unsafe keys (__proto__, constructor, prototype)' }) }],

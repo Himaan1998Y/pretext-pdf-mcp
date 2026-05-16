@@ -7,6 +7,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- Extracted shared document-safety guards into `src/utils/safety.ts`.
+- Corrected `generate_invoice` tool description: removed claim of automatic
+  IGST/CGST inter-vs-intra-state routing (the schema has no `state` field on
+  `from`/`to`, so that routing was never wired up).
+- Replaced magic color literals in `generate-invoice.ts` with named constants
+  (`INVOICE_PRIMARY_COLOR`, `INVOICE_MUTED_COLOR`).
+- Tightened internal `buildInvoiceDocument` / `buildReportDocument` return
+  type from `any` to `PdfDocument` from `pretext-pdf`.
+
+---
+
 ## [1.4.11] — 2026-05-08
 
 ### Fixed
