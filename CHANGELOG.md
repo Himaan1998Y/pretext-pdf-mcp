@@ -11,9 +11,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
-- **HTTP: wrong-method requests on known paths return 405** — `GET`, `PUT`, `PATCH`, etc.
-  on `/api/generate` and `/mcp` now respond with `405 Method Not Allowed` and an
-  `Allow: POST, OPTIONS` header, instead of the incorrect `404 Not Found`.
+- **HTTP: authenticated wrong-method requests on known paths return 405** — `GET`, `PUT`,
+  `PATCH`, etc. on `/api/generate` and `/mcp` from authenticated callers now respond with
+  `405 Method Not Allowed` and an `Allow: POST, OPTIONS` header, instead of `404 Not Found`.
+  Unauthenticated callers with wrong method still receive `401` (intentional — avoids
+  revealing endpoint existence to unauthorized parties).
 
 - **HTTP: unauthorized request log now includes requester IP** — The `'unauthorized request'`
   log entry now carries an `ip` field (`req.socket.remoteAddress`) for forensic traceability.
