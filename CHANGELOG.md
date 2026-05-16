@@ -7,6 +7,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.13] — 2026-05-16
+
+### Fixed
+
+- **HTTP: wrong-method requests on known paths return 405** — `GET`, `PUT`, `PATCH`, etc.
+  on `/api/generate` and `/mcp` now respond with `405 Method Not Allowed` and an
+  `Allow: POST, OPTIONS` header, instead of the incorrect `404 Not Found`.
+
+- **HTTP: unauthorized request log now includes requester IP** — The `'unauthorized request'`
+  log entry now carries an `ip` field (`req.socket.remoteAddress`) for forensic traceability.
+  Previously the log only recorded the path.
+
+---
+
 ## [1.4.12] — 2026-05-16
 
 HTTP transport hardening + post-audit safety polish.

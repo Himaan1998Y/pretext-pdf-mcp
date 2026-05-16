@@ -192,7 +192,10 @@ if (port) {
     // Bearer-token check for any authenticated endpoint. When MCP_API_KEY is
     // unset the check is a no-op — see startup guard for the public-bind requirement.
     if (!isAuthorized(req)) {
-      log('warn', 'unauthorized request', { path: url.pathname })
+      log('warn', 'unauthorized request', {
+        path: url.pathname,
+        ip: req.socket.remoteAddress ?? 'unknown',
+      })
       sendUnauthorized(res)
       return
     }
@@ -308,6 +311,13 @@ if (port) {
       } finally {
         activeRenders--
       }
+      return
+    }
+
+    // Known paths only accept POST — return 405 instead of 404 for wrong-method requests
+    if ((url.pathname === '/api/generate' || url.pathname === '/mcp') && req.method !== 'POST' && req.method !== 'OPTIONS') {
+      res.writeHead(405, { 'Content-Type': 'application/json', 'Allow': 'POST, OPTIONS' })
+      res.end(JSON.stringify({ error: 'Method Not Allowed' }))
       return
     }
 
