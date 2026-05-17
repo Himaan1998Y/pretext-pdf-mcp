@@ -2,7 +2,7 @@ import { render, type PdfDocument } from 'pretext-pdf'
 import { markdownToContent } from 'pretext-pdf/markdown'
 import { toBase64 } from '../utils/base64.js'
 import { runDocumentSafetyChecks } from '../utils/safety.js'
-import { assertOutputSize, MAX_CONTENT_ELEMENTS } from '../utils/limits.js'
+import { assertOutputSize, MAX_CONTENT_ELEMENTS, MAX_MARKDOWN_CHARS } from '../utils/limits.js'
 
 export const generateFromMarkdownTool = {
   schema: {
@@ -61,6 +61,13 @@ export const generateFromMarkdownTool = {
       if (typeof args.font_size === 'number' && (args.font_size < 6 || args.font_size > 144)) {
         return {
           content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'font_size must be between 6 and 144' }) }],
+          isError: true,
+        }
+      }
+
+      if (markdown.length > MAX_MARKDOWN_CHARS) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `Markdown input ${markdown.length} chars exceeds ${MAX_MARKDOWN_CHARS}` }) }],
           isError: true,
         }
       }

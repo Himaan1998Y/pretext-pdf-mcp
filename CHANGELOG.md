@@ -7,6 +7,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.15] — 2026-05-17
+
+### Fixed
+
+- **`checkJsonDepth` false positives** — Bracket characters inside JSON string values no longer inflate the depth count. Rewritten as a string-aware state machine that correctly skips quoted contents and handles escapes.
+- **Markdown DoS via cheap-input/expensive-parse** — Added 200KB pre-parse character cap (`MAX_MARKDOWN_CHARS`) before `markdownToContent` to prevent crafted markdown from expanding into millions of elements.
+- **`MAX_CONTENT_ELEMENTS` bypass via `generate_pdf`** — Element cap now applied to direct `generate_pdf` calls, not only the markdown path.
+
+### Tests
+
+- New `test/limits.test.ts` covering `checkJsonDepth` (including false-positive and escaped-quote cases), `assertOutputSize`, and all limit constants.
+
+---
+
 ## [1.4.14] — 2026-05-17
 
 ### Added
