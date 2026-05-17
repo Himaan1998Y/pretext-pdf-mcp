@@ -7,6 +7,37 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.14] — 2026-05-17
+
+### Added
+
+- **JSON depth-bomb guard** (`src/index.ts`) — Both `/api/generate` and `/mcp` endpoints now
+  call `checkJsonDepth()` before `JSON.parse()`. Requests with nesting deeper than 50 levels
+  are rejected with `400 Bad Request`, preventing stack-overflow attacks via crafted payloads.
+
+- **Output size cap** (`src/utils/limits.ts`, all generate tools) — `assertOutputSize()` is
+  called after every `render()` call in `generate_pdf`, `generate_invoice`, `generate_report`,
+  and `generate_from_markdown`. PDFs exceeding 50 MB are rejected with an `isError` response
+  before base64 encoding, preventing memory exhaustion on unusually large documents.
+
+- **Report sections limit** (`src/tools/generate-report.ts`) — `generate_report` now rejects
+  requests with more than 100 sections (`MAX_REPORT_SECTIONS`), protecting the renderer from
+  unbounded iteration.
+
+- **Markdown element cap** (`src/tools/generate-from-markdown.ts`) — After `markdownToContent()`
+  returns, element count is checked against `MAX_CONTENT_ELEMENTS` (500). Oversized parse output
+  is rejected before the render pipeline starts.
+
+- **HTTPS startup warning** (`src/index.ts`) — When the server binds to a public interface
+  (`isPublicBind`) and `MCP_BEHIND_PROXY` is not set, a `[WARN]` message is emitted to stderr
+  recommending HTTPS for public deployments.
+
+- **`src/utils/limits.ts`** — New shared module exporting all limit constants
+  (`MAX_PDF_OUTPUT_BYTES`, `MAX_CONTENT_ELEMENTS`, `MAX_REPORT_SECTIONS`, `JSON_MAX_DEPTH`)
+  and guard functions (`checkJsonDepth`, `assertOutputSize`).
+
+---
+
 ## [1.4.13] — 2026-05-16
 
 ### Fixed

@@ -2,6 +2,7 @@ import { render, type PdfDocument } from 'pretext-pdf'
 import { markdownToContent } from 'pretext-pdf/markdown'
 import { toBase64 } from '../utils/base64.js'
 import { runDocumentSafetyChecks } from '../utils/safety.js'
+import { assertOutputSize, MAX_CONTENT_ELEMENTS } from '../utils/limits.js'
 
 export const generateFromMarkdownTool = {
   schema: {
@@ -65,6 +66,9 @@ export const generateFromMarkdownTool = {
       }
 
       const content = await markdownToContent(markdown)
+      if (content.length > MAX_CONTENT_ELEMENTS) {
+        return { content: [{ type: 'text', text: `Markdown produced ${content.length} elements, exceeding limit of ${MAX_CONTENT_ELEMENTS}` }], isError: true }
+      }
       const pageSizeArg = (args.page_size as string | undefined) ?? 'A4'
       const doc: PdfDocument = {
         pageSize: pageSizeArg as PdfDocument['pageSize'],
@@ -79,6 +83,7 @@ export const generateFromMarkdownTool = {
       if (safetyError) return safetyError
 
       const bytes = await render(doc)
+      assertOutputSize(bytes, 'generate_from_markdown')
       const base64 = toBase64(bytes)
       const filename = ((args.filename as string | undefined) ?? 'document') + '.pdf'
       return {

@@ -3,6 +3,7 @@ import { render } from 'pretext-pdf'
 import type { PdfDocument } from 'pretext-pdf'
 import { toBase64 } from '../utils/base64.js'
 import { hasUnsafeKeys, runDocumentSafetyChecks } from '../utils/safety.js'
+import { assertOutputSize } from '../utils/limits.js'
 
 interface InvoiceParty {
   company: string
@@ -499,6 +500,7 @@ export const generateInvoiceTool = {
       if (safetyError) return safetyError
 
       const bytes = await render(doc)
+      assertOutputSize(bytes, 'generate_invoice')
       const base64 = toBase64(bytes)
       const filename = ((args.filename as string) || `invoice-${invoiceNo}`) + '.pdf'
       return {

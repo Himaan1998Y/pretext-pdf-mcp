@@ -12,6 +12,7 @@ import {
   ErrorCode,
 } from '@modelcontextprotocol/sdk/types.js'
 import { PretextPdfError, validate } from 'pretext-pdf'
+import { checkJsonDepth, assertOutputSize } from './utils/limits.js'
 import type { PdfDocument } from 'pretext-pdf'
 import { generatePdfTool } from './tools/generate-pdf.js'
 import { generateInvoiceTool } from './tools/generate-invoice.js'
@@ -220,7 +221,9 @@ if (port) {
 
       let body: { data?: unknown }
       try {
-        body = JSON.parse(Buffer.concat(chunks).toString())
+        const raw = Buffer.concat(chunks).toString()
+        checkJsonDepth(raw)
+        body = JSON.parse(raw)
       } catch {
         log('warn', 'invalid json body', { endpoint: '/api/generate' })
         res.writeHead(400, { 'Content-Type': 'application/json' })
@@ -241,6 +244,7 @@ if (port) {
         // Schema validation: catches all element-level errors before the render pipeline starts
         validate(body.data as unknown as PdfDocument)
         const pdf = await render(body.data as unknown as Parameters<typeof render>[0])
+        assertOutputSize(pdf, 'generate_pdf')
         log('info', 'pdf generated', { endpoint: '/api/generate', size_bytes: pdf.byteLength })
         res.writeHead(200, {
           'Content-Type': 'application/pdf',
@@ -284,7 +288,9 @@ if (port) {
       }
       let body: unknown
       try {
-        body = JSON.parse(Buffer.concat(chunks).toString())
+        const raw = Buffer.concat(chunks).toString()
+        checkJsonDepth(raw)
+        body = JSON.parse(raw)
       } catch {
         log('warn', 'invalid json body', { endpoint: '/mcp' })
         res.writeHead(400, { 'Content-Type': 'application/json' })
@@ -347,6 +353,9 @@ if (port) {
   }
   httpServer.listen(port, host, () => {
     process.stderr.write(`pretext-pdf-mcp HTTP server listening on ${host}:${port}\n`)
+    if (isPublicBind && !process.env.MCP_BEHIND_PROXY) {
+      process.stderr.write('[WARN] Server is bound to a public interface without MCP_BEHIND_PROXY set. HTTPS is strongly recommended for public deployments.\n')
+    }
   })
 } else {
   // Stdio mode — for local npx usage (Claude Desktop, Cursor, etc.)

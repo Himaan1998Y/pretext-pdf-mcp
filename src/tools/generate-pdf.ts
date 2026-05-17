@@ -1,6 +1,7 @@
 import { render } from 'pretext-pdf'
 import { toBase64 } from '../utils/base64.js'
 import { runDocumentSafetyChecks } from '../utils/safety.js'
+import { assertOutputSize } from '../utils/limits.js'
 
 export const generatePdfTool = {
   schema: {
@@ -43,6 +44,7 @@ export const generatePdfTool = {
 
       // Safe cast to PdfDocument: runDocumentSafetyChecks proved doc conforms structurally
       const bytes = await render(doc as unknown as Parameters<typeof render>[0])
+      assertOutputSize(bytes, 'generate_pdf')
       const base64 = toBase64(bytes)
       const filename = ((args.filename as string) || 'document') + '.pdf'
       return {
