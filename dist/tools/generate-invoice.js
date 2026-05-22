@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { render } from 'pretext-pdf';
 import { toBase64 } from '../utils/base64.js';
 import { hasUnsafeKeys, runDocumentSafetyChecks } from '../utils/safety.js';
+import { assertOutputSize } from '../utils/limits.js';
 const SUPPORTED_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'];
 // Brand colors for invoice rendering
 const INVOICE_PRIMARY_COLOR = '#1a1a2e'; // navy — headings, header bg, total accents, separators
@@ -444,6 +445,7 @@ export const generateInvoiceTool = {
             if (safetyError)
                 return safetyError;
             const bytes = await render(doc);
+            assertOutputSize(bytes, 'generate_invoice');
             const base64 = toBase64(bytes);
             const filename = (args.filename || `invoice-${invoiceNo}`) + '.pdf';
             return {

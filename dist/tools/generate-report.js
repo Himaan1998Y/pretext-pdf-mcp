@@ -1,6 +1,7 @@
 import { render } from 'pretext-pdf';
 import { toBase64 } from '../utils/base64.js';
 import { hasUnsafeKeys, runDocumentSafetyChecks } from '../utils/safety.js';
+import { assertOutputSize, MAX_REPORT_SECTIONS } from '../utils/limits.js';
 const CALLOUT_COLORS = {
     info: '#0070f3',
     warning: '#f59e0b',
@@ -229,6 +230,9 @@ export const generateReportTool = {
                     isError: true,
                 };
             }
+            if (sections.length > MAX_REPORT_SECTIONS) {
+                return { content: [{ type: 'text', text: `sections exceeds limit of ${MAX_REPORT_SECTIONS}` }], isError: true };
+            }
             for (let i = 0; i < sections.length; i++) {
                 const s = sections[i];
                 if (!s || typeof s !== 'object') {
@@ -271,6 +275,7 @@ export const generateReportTool = {
             if (safetyError)
                 return safetyError;
             const bytes = await render(doc);
+            assertOutputSize(bytes, 'generate_report');
             const base64 = toBase64(bytes);
             const filename = (args.filename || `report-${Date.now()}`) + '.pdf';
             return {

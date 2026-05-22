@@ -1,6 +1,7 @@
 import { render } from 'pretext-pdf';
 import { toBase64 } from '../utils/base64.js';
 import { runDocumentSafetyChecks } from '../utils/safety.js';
+import { assertOutputSize, MAX_CONTENT_ELEMENTS } from '../utils/limits.js';
 export const generatePdfTool = {
     schema: {
         name: 'generate_pdf',
@@ -35,8 +36,15 @@ export const generatePdfTool = {
             if (safetyError)
                 return safetyError;
             const doc = args.document;
+            if (Array.isArray(doc.content) && doc.content.length > MAX_CONTENT_ELEMENTS) {
+                return {
+                    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `content array length ${doc.content.length} exceeds limit ${MAX_CONTENT_ELEMENTS}` }) }],
+                    isError: true,
+                };
+            }
             // Safe cast to PdfDocument: runDocumentSafetyChecks proved doc conforms structurally
             const bytes = await render(doc);
+            assertOutputSize(bytes, 'generate_pdf');
             const base64 = toBase64(bytes);
             const filename = (args.filename || 'document') + '.pdf';
             return {

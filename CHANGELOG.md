@@ -7,6 +7,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.16] — 2026-05-22
+
+### Changed
+
+- **Concurrency cap defaults** — `MAX_CONCURRENT_RENDERS` now defaults to **8** (was 4) and is configurable via the new `MCP_MAX_CONCURRENT_RENDERS` env var. The legacy `MCP_MAX_CONCURRENT` name is still honored as a fallback for backward compatibility.
+- **Overload response code** — When the in-flight render cap is reached, the server now returns **`503 Service Unavailable`** (was `429`) with `Retry-After: 5`. 503 better matches the semantics of a transient global capacity limit; 429 is reserved for per-client rate limits.
+
+### Security
+
+- **IPv6 wildcard bind detection (audit closure)** — Public-bind guard now uses an explicit loopback allow-list and a documented wildcard set (`0.0.0.0`, `::`, `::0`, `0:0:0:0:0:0:0:0`). Behavior is unchanged for IPv4 — the guard already rejected any non-loopback host without `MCP_API_KEY` — but IPv6 wildcards are now explicitly recognized, logged, and covered by tests.
+
+### Tests
+
+- New `test/http-transport.test.ts` cases: server refuses to start on `MCP_HOST=::` and `MCP_HOST=::0` without an API key.
+
+---
+
 ## [1.4.15] — 2026-05-17
 
 ### Fixed

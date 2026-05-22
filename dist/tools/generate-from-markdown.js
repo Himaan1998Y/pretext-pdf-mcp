@@ -2,6 +2,7 @@ import { render } from 'pretext-pdf';
 import { markdownToContent } from 'pretext-pdf/markdown';
 import { toBase64 } from '../utils/base64.js';
 import { runDocumentSafetyChecks } from '../utils/safety.js';
+import { assertOutputSize, MAX_CONTENT_ELEMENTS, MAX_MARKDOWN_CHARS } from '../utils/limits.js';
 export const generateFromMarkdownTool = {
     schema: {
         name: 'generate_from_markdown',
@@ -58,7 +59,16 @@ export const generateFromMarkdownTool = {
                     isError: true,
                 };
             }
+            if (markdown.length > MAX_MARKDOWN_CHARS) {
+                return {
+                    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `Markdown input ${markdown.length} chars exceeds ${MAX_MARKDOWN_CHARS}` }) }],
+                    isError: true,
+                };
+            }
             const content = await markdownToContent(markdown);
+            if (content.length > MAX_CONTENT_ELEMENTS) {
+                return { content: [{ type: 'text', text: `Markdown produced ${content.length} elements, exceeding limit of ${MAX_CONTENT_ELEMENTS}` }], isError: true };
+            }
             const pageSizeArg = args.page_size ?? 'A4';
             const doc = {
                 pageSize: pageSizeArg,
@@ -72,6 +82,7 @@ export const generateFromMarkdownTool = {
             if (safetyError)
                 return safetyError;
             const bytes = await render(doc);
+            assertOutputSize(bytes, 'generate_from_markdown');
             const base64 = toBase64(bytes);
             const filename = (args.filename ?? 'document') + '.pdf';
             return {

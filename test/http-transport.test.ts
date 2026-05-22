@@ -495,6 +495,18 @@ describe('security: public-bind guard', () => {
     assert.equal(code, 1, `Expected exit code 1, got ${code}`)
   })
 
+  it('refuses to start when MCP_HOST=:: (IPv6 wildcard) without MCP_API_KEY', async () => {
+    const { code, stderr } = await spawnExpectFatal({ MCP_HOST: '::' })
+    assert.equal(code, 1, `Expected exit code 1, got ${code}. Stderr: ${stderr.substring(0, 300)}`)
+    assert.ok(stderr.includes('[FATAL]'), `Expected FATAL log. Got: ${stderr.substring(0, 300)}`)
+  })
+
+  it('refuses to start when MCP_HOST=::0 (alt IPv6 wildcard) without MCP_API_KEY', async () => {
+    const { code, stderr } = await spawnExpectFatal({ MCP_HOST: '::0' })
+    assert.equal(code, 1, `Expected exit code 1, got ${code}. Stderr: ${stderr.substring(0, 300)}`)
+    assert.ok(stderr.includes('[FATAL]'), `Expected FATAL log. Got: ${stderr.substring(0, 300)}`)
+  })
+
   it('starts normally when MCP_HOST=0.0.0.0 and MCP_API_KEY is set', async () => {
     const { proc, bindLog } = await spawnHttpServer({ MCP_HOST: '0.0.0.0', MCP_API_KEY: 'test-key' })
     assert.ok(bindLog.includes('listening on'), `Expected listening message, got: ${bindLog}`)

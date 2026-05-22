@@ -7,6 +7,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, McpError, ErrorCode, } from '@modelcontextprotocol/sdk/types.js';
 import { PretextPdfError, validate } from 'pretext-pdf';
+import { checkJsonDepth, assertOutputSize } from './utils/limits.js';
 import { generatePdfTool } from './tools/generate-pdf.js';
 import { generateInvoiceTool } from './tools/generate-invoice.js';
 import { generateReportTool } from './tools/generate-report.js';
@@ -26,8 +27,14 @@ function log(level, msg, meta) {
 // ─── Concurrency limit ────────────────────────────────────────────────────────
 // Bounds the number of in-flight render operations to prevent OOM / event-loop
 // starvation under burst load. Render is CPU-heavy and synchronous in places,
-// so an unbounded queue can wedge the server. Configurable via MCP_MAX_CONCURRENT.
-const MAX_CONCURRENT_RENDERS = Number(process.env.MCP_MAX_CONCURRENT ?? 4);
+// so an unbounded queue can wedge the server. Configurable via
+// MCP_MAX_CONCURRENT_RENDERS (preferred) or the legacy MCP_MAX_CONCURRENT alias.
+function parseConcurrencyEnv() {
+    const raw = process.env.MCP_MAX_CONCURRENT_RENDERS ?? process.env.MCP_MAX_CONCURRENT;
+    const parsed = raw === undefined ? NaN : parseInt(raw, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 8;
+}
+const MAX_CONCURRENT_RENDERS = parseConcurrencyEnv();
 let activeRenders = 0;
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
 /**
@@ -52,7 +59,10 @@ function sendUnauthorized(res) {
     res.end(JSON.stringify({ error: 'Unauthorized' }));
 }
 function sendBusy(res) {
-    res.writeHead(429, {
+    // 503 + Retry-After signals transient overload (queue saturated), distinct
+    // from 429 (per-client rate limit). Clients with retry/backoff respect both,
+    // but 503 better matches the semantics of a global concurrency cap.
+    res.writeHead(503, {
         'Content-Type': 'application/json',
         'Retry-After': '5',
     });
@@ -162,7 +172,10 @@ if (port) {
             // Bearer-token check for any authenticated endpoint. When MCP_API_KEY is
             // unset the check is a no-op — see startup guard for the public-bind requirement.
             if (!isAuthorized(req)) {
-                log('warn', 'unauthorized request', { path: url.pathname });
+                log('warn', 'unauthorized request', {
+                    path: url.pathname,
+                    ip: req.socket.remoteAddress ?? 'unknown',
+                });
                 sendUnauthorized(res);
                 return;
             }
@@ -185,7 +198,9 @@ if (port) {
                 }
                 let body;
                 try {
-                    body = JSON.parse(Buffer.concat(chunks).toString());
+                    const raw = Buffer.concat(chunks).toString();
+                    checkJsonDepth(raw);
+                    body = JSON.parse(raw);
                 }
                 catch {
                     log('warn', 'invalid json body', { endpoint: '/api/generate' });
@@ -206,6 +221,7 @@ if (port) {
                     // Schema validation: catches all element-level errors before the render pipeline starts
                     validate(body.data);
                     const pdf = await render(body.data);
+                    assertOutputSize(pdf, 'generate_pdf');
                     log('info', 'pdf generated', { endpoint: '/api/generate', size_bytes: pdf.byteLength });
                     res.writeHead(200, {
                         'Content-Type': 'application/pdf',
@@ -250,7 +266,9 @@ if (port) {
                 }
                 let body;
                 try {
-                    body = JSON.parse(Buffer.concat(chunks).toString());
+                    const raw = Buffer.concat(chunks).toString();
+                    checkJsonDepth(raw);
+                    body = JSON.parse(raw);
                 }
                 catch {
                     log('warn', 'invalid json body', { endpoint: '/mcp' });
@@ -280,6 +298,12 @@ if (port) {
                 }
                 return;
             }
+            // Known paths only accept POST — return 405 instead of 404 for wrong-method requests
+            if ((url.pathname === '/api/generate' || url.pathname === '/mcp') && req.method !== 'POST' && req.method !== 'OPTIONS') {
+                res.writeHead(405, { 'Content-Type': 'application/json', 'Allow': 'POST, OPTIONS' });
+                res.end(JSON.stringify({ error: 'Method Not Allowed' }));
+                return;
+            }
             res.writeHead(404);
             res.end();
         }
@@ -296,8 +320,13 @@ if (port) {
     const host = process.env.MCP_HOST ?? '127.0.0.1';
     // Public-bind guard — refuse to start on a non-loopback interface without
     // an API key configured. Prevents accidental exposure of an unauthenticated
-    // PDF render endpoint when MCP_HOST is set to 0.0.0.0 or a LAN address.
-    const isPublicBind = host !== '127.0.0.1' && host !== '::1' && host !== 'localhost';
+    // PDF render endpoint when MCP_HOST is set to a wildcard (0.0.0.0, ::, ::0)
+    // or a LAN address. Loopback hosts are the only "private" set; everything
+    // else — including all IPv6 wildcard notations — is treated as public.
+    const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost']);
+    const WILDCARD_HOSTS = new Set(['0.0.0.0', '::', '::0', '0:0:0:0:0:0:0:0']);
+    const isWildcardBind = WILDCARD_HOSTS.has(host);
+    const isPublicBind = !LOOPBACK_HOSTS.has(host);
     if (isPublicBind && !process.env.MCP_API_KEY) {
         process.stderr.write('[FATAL] MCP_HOST is set to a public address but MCP_API_KEY is not configured.\n');
         process.stderr.write('[FATAL] Refusing to start without authentication on a public binding.\n');
@@ -306,6 +335,12 @@ if (port) {
     }
     httpServer.listen(port, host, () => {
         process.stderr.write(`pretext-pdf-mcp HTTP server listening on ${host}:${port}\n`);
+        if (isWildcardBind) {
+            process.stderr.write(`[WARN] Wildcard bind detected (host=${host}). Server is reachable on every network interface.\n`);
+        }
+        if (isPublicBind && !process.env.MCP_BEHIND_PROXY) {
+            process.stderr.write('[WARN] Server is bound to a public interface without MCP_BEHIND_PROXY set. HTTPS is strongly recommended for public deployments.\n');
+        }
     });
 }
 else {
