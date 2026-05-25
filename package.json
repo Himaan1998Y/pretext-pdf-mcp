@@ -1,6 +1,6 @@
 {
   "name": "pretext-pdf-mcp",
-  "version": "1.4.16",
+  "version": "1.4.17",
   "mcpName": "io.github.Himaan1998Y/pretext-pdf",
   "description": "MCP server: generate professional PDFs from JSON in Claude, Cursor, Windsurf, or any AI agent. Serverless, no Chromium. Invoices, reports, resumes.",
   "keywords": [
@@ -42,7 +42,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "pretext-pdf": "^1.1.0"
+    "pretext-pdf": "^1.6.0"
   },
   "devDependencies": {
     "@napi-rs/canvas": "^0.1.100",

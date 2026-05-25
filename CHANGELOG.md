@@ -7,6 +7,49 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.17] — 2026-05-25
+
+Catch-up sync to `pretext-pdf` v1.6.0. No MCP surface changes; inherits the
+library's security hardening and architectural sprint.
+
+### Changed
+
+- **`pretext-pdf` dependency bumped from `^1.1.0` to `^1.6.0`** — three library
+  minors and a major architectural sprint. The MCP imports (`render`,
+  `validateDocument`, `ELEMENT_TYPES`, `PdfDocument`, `ValidationError`,
+  `markdownToContent`) are unchanged in v1.6.0's public surface. Library
+  satisfies its own `pretextPdf.mcpCompat` range (`>=1.4.0 <2.0.0`) for this
+  MCP version.
+
+### Security (inherited from library)
+
+- **SVG sanitizer hardening (library v1.6.0)** — Inline SVGs now strip
+  `<foreignObject>` (XSS surface for HTML-in-SVG), `javascript:` URI schemes
+  on `<a href>`, and CSS `expression()` calls. The MCP doesn't expose the
+  sanitizer directly, but any caller passing inline SVG through
+  `generate_pdf` benefits automatically.
+- **IPv4 alternative-notation SSRF closure (library v1.5.2)** — Decimal,
+  octal, hex, and short-form IPv4 representations (e.g. `2130706433`,
+  `0177.0.0.1`, `0x7f000001`, `127.1`) now resolve and are rejected as
+  loopback by the same guard that handled dotted-quad. Closes the
+  `generate_pdf` URL-image fetch bypass.
+- **7 architectural verification gates inherited from library v1.6.0** —
+  Plugin registry contract, table-determinism contract, drift guards on
+  public API surface, benchmark corpora regression locks, and three new
+  contract tests covering asset DNS-dedup, asset concurrency, and asset
+  cold-start performance. These are library-internal but eliminate a class
+  of regression risk that would have surfaced as runtime errors in MCP
+  calls.
+
+### Notes
+
+- `@signpdf/signpdf`, `@signpdf/placeholder-pdf-lib`, `@signpdf/signer-p12`
+  are declared as optional peer deps in `pretext-pdf` v1.6.0. The MCP does
+  not currently expose signing tools, so these are **not** mirrored into
+  this package's peerDependencies. Will sync if/when a signing tool ships.
+
+---
+
 ## [1.4.16] — 2026-05-22
 
 ### Changed
