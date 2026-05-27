@@ -7,6 +7,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.18] — 2026-05-27
+
+Sync to `pretext-pdf` v1.7.1 security hotfix. HTTP status mapping hardened.
+
+### Security (inherited from library v1.7.1)
+
+- **SVG `<style>` @import stripping** — `sanitizeSvg` now removes `@import` directives; outbound network requests triggered by crafted SVG style blocks are no longer possible.
+- **SVG `<style>` `url(javascript:|vbscript:|data:)` stripping** — Closes an injection path in CSS property values that bypassed the existing `<a href>` and `<image href>` attribute filters.
+- **SVG `<style>` `url(https?://...)` stripping (defense-in-depth)** — Prevents external stylesheet hot-linking from rasterized SVG content.
+
+### Fixed
+
+- **`isClientError` — removed stale `ENCRYPTION_NOT_AVAILABLE` code** — This code was removed from the library in a prior version; its presence was causing unknown errors to be misclassified as HTTP 400 instead of 500.
+
+- **`isClientError` — 12 missing error codes added** — `MARKDOWN_DEP_MISSING`, `RTL_REORDER_FAILED`, `CHART_LOAD_FAILED`, `QR_DEP_MISSING`, `BARCODE_DEP_MISSING`, `CHART_DEP_MISSING`, `BARCODE_SYMBOLOGY_INVALID`, `CHART_SPEC_INVALID`, `SIGNATURE_DEP_MISSING`, `PATH_TRAVERSAL`, `UNKNOWN_PROPERTY`, and `INVALID_INPUT` were all being returned as HTTP 500 when they should be 400. These map to errors caused by bad caller input or missing optional dependencies that the caller controls.
+
+### Changed
+
+- **`pretext-pdf` dependency** — `^1.6.0` → `^1.7.0`. The `^1.6.0` range already resolved to `v1.7.0` (via semver), but the explicit pin documents that v1.7.0's signing rewrite and v1.7.1's SVG security fixes are the intended baseline.
+
+### Notes
+
+- CHANGELOG v1.4.17 previously stated "Catch-up sync to pretext-pdf v1.6.0"; the library had already advanced to v1.7.0 before that release. v1.4.18 makes the dependency explicit.
+
+---
+
 ## [1.4.17] — 2026-05-25
 
 Catch-up sync to `pretext-pdf` v1.6.0. No MCP surface changes; inherits the

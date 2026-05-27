@@ -105,6 +105,8 @@ function validatePdfDocumentInput(data: unknown): asserts data is Record<string,
  */
 function isClientError(err: unknown): boolean {
   if (!(err instanceof PretextPdfError)) return false // Unknown errors → server error (500)
+  // Codes that map to HTTP 400 (caller-side error — bad input or missing optional dep).
+  // Keep in sync with the ErrorCode union in pretext-pdf/src/errors.ts.
   const clientErrors = [
     'VALIDATION_ERROR',
     'IMAGE_LOAD_FAILED',
@@ -114,7 +116,18 @@ function isClientError(err: unknown): boolean {
     'FONT_NOT_LOADED',
     'FONT_LOAD_FAILED',
     'MONOSPACE_FONT_REQUIRED',
-    'ENCRYPTION_NOT_AVAILABLE',
+    'MARKDOWN_DEP_MISSING',
+    'RTL_REORDER_FAILED',
+    'CHART_LOAD_FAILED',
+    'QR_DEP_MISSING',
+    'BARCODE_DEP_MISSING',
+    'CHART_DEP_MISSING',
+    'BARCODE_SYMBOLOGY_INVALID',
+    'CHART_SPEC_INVALID',
+    'SIGNATURE_DEP_MISSING',
+    'PATH_TRAVERSAL',
+    'UNKNOWN_PROPERTY',
+    'INVALID_INPUT',
   ]
   return clientErrors.includes(err.code)
 }
