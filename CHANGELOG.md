@@ -7,6 +7,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.8] — 2026-05-29
+
+Sprint 5A: generate-report.ts type safety, buildReportDocument unit tests.
+
+### Changed
+
+- **`generate-report.ts`: `sections` typed as `ReportSection[]`** — was `any[]`. The
+  `ReportSection` interface was already declared in the file; casting `args.sections` to
+  it eliminates five `(s.table as any)` and `(s.callout as any)` casts in the validation
+  loop. `buildReportDocument` is now exported for direct unit testing.
+
+### Tests
+
+- **`test/report-build.test.ts`**: 16 unit tests for `buildReportDocument` covering
+  document structure (h1 title, TOC, header/footer), section rendering (headings,
+  multi-paragraph body, table rows, callout style/content), and edge cases (subtitle,
+  author/date, TOC opt-out).
+
+---
+
 ## [1.5.6] — 2026-05-28
 
 Sprint 4: Split `generate-invoice.ts` (562 LOC) into focused `invoice/` submodules.

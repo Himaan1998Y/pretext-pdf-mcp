@@ -12,7 +12,7 @@ const VALID_CALLOUT_STYLES = Object.keys(CALLOUT_COLORS);
 function todayISO() {
     return new Date().toISOString().slice(0, 10);
 }
-function buildReportDocument(input) {
+export function buildReportDocument(input) {
     const includeToc = input.include_toc !== false;
     const date = input.date ?? todayISO();
     const content = [

@@ -33,7 +33,7 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-function buildReportDocument(input: ReportInput): PdfDocument {
+export function buildReportDocument(input: ReportInput): PdfDocument {
   const includeToc = input.include_toc !== false
   const date = input.date ?? todayISO()
 
@@ -261,7 +261,7 @@ export const generateReportTool = {
           isError: true,
         }
       }
-      const sections = args.sections as any[]
+      const sections = args.sections as ReportSection[]
       if (!Array.isArray(sections) || sections.length === 0) {
         return {
           content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'sections must be a non-empty array' }) }],
@@ -286,10 +286,10 @@ export const generateReportTool = {
           if (typeof s.table !== 'object' || Array.isArray(s.table)) {
             return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].table must be an object` }) }], isError: true }
           }
-          if (!Array.isArray((s.table as any).headers)) {
+          if (!Array.isArray(s.table.headers)) {
             return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].table.headers must be an array of strings` }) }], isError: true }
           }
-          if (!Array.isArray((s.table as any).rows) || !(s.table as any).rows.every((r: unknown) => Array.isArray(r))) {
+          if (!Array.isArray(s.table.rows) || !s.table.rows.every((r: unknown) => Array.isArray(r))) {
             return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].table.rows must be an array of arrays` }) }], isError: true }
           }
         }
@@ -297,10 +297,10 @@ export const generateReportTool = {
           if (typeof s.callout !== 'object' || Array.isArray(s.callout)) {
             return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].callout must be an object` }) }], isError: true }
           }
-          if (typeof (s.callout as any).text !== 'string' || (s.callout as any).text.trim() === '') {
+          if (typeof s.callout.text !== 'string' || s.callout.text.trim() === '') {
             return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].callout.text is required and must be a non-empty string` }) }], isError: true }
           }
-          if ((s.callout as any).style !== undefined && !VALID_CALLOUT_STYLES.includes((s.callout as any).style)) {
+          if (s.callout.style !== undefined && !VALID_CALLOUT_STYLES.includes(s.callout.style)) {
             return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].callout.style must be one of: info, warning, tip, note` }) }], isError: true }
           }
         }
