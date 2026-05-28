@@ -85,34 +85,23 @@ function validatePdfDocumentInput(data) {
  * Categorize pretext-pdf errors for HTTP status code determination.
  * Returns true if error is a client error (400), false if server error (500).
  */
+// Categories where every code in the group maps to HTTP 400.
+// Derived from PretextPdfError.category — no need to enumerate individual codes.
+const CLIENT_ERROR_CATEGORIES = new Set(['validation', 'security', 'dependency', 'image', 'layout']);
+// Codes whose category is 'font' or 'render' but are still caller-caused (bad config/input).
+const ADDITIONAL_CLIENT_CODES = new Set([
+    'FONT_NOT_LOADED', 'FONT_LOAD_FAILED', 'ITALIC_FONT_NOT_LOADED', 'MONOSPACE_FONT_REQUIRED',
+    'BARCODE_SYMBOLOGY_INVALID', 'CHART_SPEC_INVALID', 'CHART_LOAD_FAILED', 'RTL_REORDER_FAILED',
+    'FORM_FIELD_NAME_DUPLICATE',
+    'FOOTNOTE_REF_ORPHANED', 'FOOTNOTE_DEF_ORPHANED', 'FOOTNOTE_DEF_DUPLICATE',
+    'SIGNATURE_P12_LOAD_FAILED',
+]);
 function isClientError(err) {
     if (!(err instanceof PretextPdfError))
-        return false; // Unknown errors → server error (500)
-    // Codes that map to HTTP 400 (caller-side error — bad input or missing optional dep).
-    // Keep in sync with the ErrorCode union in pretext-pdf/src/errors.ts.
-    const clientErrors = [
-        'VALIDATION_ERROR',
-        'IMAGE_LOAD_FAILED',
-        'IMAGE_FORMAT_MISMATCH',
-        'SVG_LOAD_FAILED',
-        'PAGE_TOO_SMALL',
-        'FONT_NOT_LOADED',
-        'FONT_LOAD_FAILED',
-        'MONOSPACE_FONT_REQUIRED',
-        'MARKDOWN_DEP_MISSING',
-        'RTL_REORDER_FAILED',
-        'CHART_LOAD_FAILED',
-        'QR_DEP_MISSING',
-        'BARCODE_DEP_MISSING',
-        'CHART_DEP_MISSING',
-        'BARCODE_SYMBOLOGY_INVALID',
-        'CHART_SPEC_INVALID',
-        'SIGNATURE_DEP_MISSING',
-        'PATH_TRAVERSAL',
-        'UNKNOWN_PROPERTY',
-        'INVALID_INPUT',
-    ];
-    return clientErrors.includes(err.code);
+        return false;
+    // category is present in pretext-pdf v2.0.1+; cast for backward compat with older installs
+    const category = err.category;
+    return (category !== undefined && CLIENT_ERROR_CATEGORIES.has(category)) || ADDITIONAL_CLIENT_CODES.has(err.code);
 }
 function createServer() {
     const server = new Server({ name: 'pretext-pdf', version: SERVER_VERSION }, { capabilities: { tools: {} } });

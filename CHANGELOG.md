@@ -7,6 +7,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.1] — 2026-05-28
+
+Patch: `isClientError` routing robustness after v2.0.0 audit.
+
+### Fixed
+
+- **`isClientError` now derives HTTP-400 classification from `PretextPdfError.category`** —
+  The previous hardcoded list of error codes had drifted from the full set of caller-caused
+  errors (missing `ITALIC_FONT_NOT_LOADED`, `FORM_FIELD_NAME_DUPLICATE`, footnote orphan codes,
+  etc.). The new implementation classifies by `category` (`validation`, `security`, `dependency`,
+  `image`, `layout` → 400) with a supplemental set for `font`/`render` codes that are still
+  caller-caused. This eliminates future drift as new error codes are added to the library.
+
+---
+
 ## [1.5.0] — 2026-05-28
 
 Upgrade to `pretext-pdf` v2.0.0 (major breaking release). MCP server version bumped to `1.5.0` to signal the new peer requirement.
