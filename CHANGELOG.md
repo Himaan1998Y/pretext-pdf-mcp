@@ -7,6 +7,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.4] — 2026-05-28
+
+Sprint 3 audit fix: docs/index.html API endpoint now configurable.
+
+### Fixed
+
+- **`docs/index.html`: demo API URL is now configurable** — Previously hardcoded to
+  `https://mcp.57.129.125.171.sslip.io/api/generate`. Now reads `?api=` query param
+  with the hardcoded URL as fallback. Playground continues working at the default server,
+  and private deployments can override: `?api=https://your-host/api/generate`.
+
+---
+
 ## [1.5.3] — 2026-05-28
 
 Sprint 2 audit fixes: type safety, tool schema quality, code element description.

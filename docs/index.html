@@ -300,7 +300,8 @@
 </div>
 
 <script>
-const API = 'https://mcp.57.129.125.171.sslip.io/api/generate'
+// API endpoint — override via ?api=https://your-host/api/generate in the URL
+const API = new URLSearchParams(window.location.search).get('api') || 'https://mcp.57.129.125.171.sslip.io/api/generate'
 
 const TEMPLATES = {
   invoice: {
