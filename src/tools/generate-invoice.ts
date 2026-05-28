@@ -397,6 +397,10 @@ export const generateInvoiceTool = {
         }
       }
 
+      // Control-character regex — defined here so it's available in the items loop below
+      // and in the party field checks further down.
+      const CTRL_CHARS = /[\n\r\x00]/
+
       // C4: validate each item's numeric fields to prevent NaN/Infinity in financial calculations
       for (let i = 0; i < items.length; i++) {
         const item = items[i]
@@ -412,14 +416,17 @@ export const generateInvoiceTool = {
         if (typeof item.rate !== 'number' || item.rate < 0 || !isFinite(item.rate)) {
           return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `items[${i}].rate must be a non-negative finite number` }) }], isError: true }
         }
-        if (item.gst_rate !== undefined && ![0, 5, 12, 18, 28].includes(item.gst_rate)) {
-          return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `items[${i}].gst_rate must be one of [0, 5, 12, 18, 28]` }) }], isError: true }
+        if (item.gst_rate !== undefined && (typeof item.gst_rate !== 'number' || !isFinite(item.gst_rate) || item.gst_rate < 0 || item.gst_rate > 100)) {
+          return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `items[${i}].gst_rate must be a finite number between 0 and 100` }) }], isError: true }
         }
         if (item.hsn_code !== undefined && typeof item.hsn_code !== 'string') {
           return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `items[${i}].hsn_code must be a string` }) }], isError: true }
         }
         if (typeof item.hsn_code === 'string' && item.hsn_code.length > 20) {
           return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `items[${i}].hsn_code must be 20 characters or fewer` }) }], isError: true }
+        }
+        if (typeof item.hsn_code === 'string' && CTRL_CHARS.test(item.hsn_code)) {
+          return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `items[${i}].hsn_code must not contain newline or null characters` }) }], isError: true }
         }
         if (typeof item.description === 'string' && item.description.length > 500) {
           return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `items[${i}].description must be 500 characters or fewer` }) }], isError: true }
@@ -447,9 +454,12 @@ export const generateInvoiceTool = {
       if (typeof args.upi_qr_data === 'string' && (args.upi_qr_data as string).length > 2953) {
         return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'upi_qr_data must be 2953 characters or fewer (QR code capacity limit)' }) }], isError: true }
       }
-      // Additional length caps for optional party fields
+      // Additional length caps + CTRL_CHARS for optional party fields rendered into PDF
       if (typeof fromParty.gstin === 'string' && fromParty.gstin.length > 20) {
         return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'from.gstin must be 20 characters or fewer' }) }], isError: true }
+      }
+      if (typeof fromParty.gstin === 'string' && CTRL_CHARS.test(fromParty.gstin)) {
+        return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'from.gstin must not contain newline or null characters' }) }], isError: true }
       }
       if (typeof fromParty.email === 'string' && fromParty.email.length > 254) {
         return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'from.email must be 254 characters or fewer' }) }], isError: true }
@@ -460,14 +470,17 @@ export const generateInvoiceTool = {
       if (typeof toParty.gstin === 'string' && toParty.gstin.length > 20) {
         return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'to.gstin must be 20 characters or fewer' }) }], isError: true }
       }
+      if (typeof toParty.gstin === 'string' && CTRL_CHARS.test(toParty.gstin)) {
+        return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'to.gstin must not contain newline or null characters' }) }], isError: true }
+      }
       if (typeof toParty.email === 'string' && toParty.email.length > 254) {
         return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'to.email must be 254 characters or fewer' }) }], isError: true }
       }
       if (typeof toParty.phone === 'string' && toParty.phone.length > 20) {
         return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'to.phone must be 20 characters or fewer' }) }], isError: true }
       }
-      // Control-character guard: covers metadata/footer fields and rendered heading/paragraph text
-      const CTRL_CHARS = /[\n\r\x00]/
+      // Control-character guard: covers all rendered text fields
+      // (CTRL_CHARS is also used in the items loop above — declaration hoisted here)
       if (CTRL_CHARS.test(fromParty.company as string)) {
         return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'from.company must not contain newline or null characters' }) }], isError: true }
       }

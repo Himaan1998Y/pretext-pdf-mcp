@@ -300,8 +300,18 @@
 </div>
 
 <script>
-// API endpoint — override via ?api=https://your-host/api/generate in the URL
-const API = new URLSearchParams(window.location.search).get('api') || 'https://mcp.57.129.125.171.sslip.io/api/generate'
+// API endpoint — override via ?api=https://your-host/api/generate in the URL.
+// Only HTTPS origins are accepted to prevent this page being used as an SSRF proxy.
+function resolveApiEndpoint(param) {
+  const DEFAULT = 'https://mcp.57.129.125.171.sslip.io/api/generate'
+  if (!param) return DEFAULT
+  try {
+    const u = new URL(param)
+    if (u.protocol !== 'https:') { console.warn('[pretext-pdf] ignored non-HTTPS ?api= param'); return DEFAULT }
+    return u.toString()
+  } catch { return DEFAULT }
+}
+const API = resolveApiEndpoint(new URLSearchParams(window.location.search).get('api'))
 
 const TEMPLATES = {
   invoice: {

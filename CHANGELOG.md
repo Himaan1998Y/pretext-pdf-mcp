@@ -7,6 +7,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.5] — 2026-05-28
+
+Post-sprint audit fixes: CRITICAL gst_rate handler, CTRL_CHARS completeness, SSRF guard.
+
+### Fixed
+
+- **CRITICAL: `gst_rate` runtime validation aligned with schema** — The Sprint 1 fix
+  removed the `enum: [0,5,12,18,28]` constraint from the JSON schema but the handler still
+  rejected non-slab values with `"must be one of [0, 5, 12, 18, 28]"`. Now validates
+  `0 ≤ gst_rate ≤ 100` (finite number) matching the documented schema behavior.
+  Callers using 20% UK VAT, 19% German VAT, etc. no longer receive unexpected VALIDATION_ERROR.
+
+- **CTRL_CHARS guard extended to `from.gstin`, `to.gstin`, and `items[i].hsn_code`** — These
+  three fields are rendered as PDF text but were missing from the control-character injection
+  check. All rendered text fields are now covered.
+
+- **`?api=` URL parameter SSRF protection** — `docs/index.html` now validates the override URL
+  with `new URL(param)` and requires `protocol === 'https:'`, preventing the page from being
+  used as an open SSRF proxy by a crafted link.
+
+- **`v1.5.2` semver tag created** — Only `v1.5.2-audit` existed; the canonical `v1.5.2` tag is
+  now present on the correct commit.
+
+---
+
 ## [1.5.4] — 2026-05-28
 
 Sprint 3 audit fix: docs/index.html API endpoint now configurable.
