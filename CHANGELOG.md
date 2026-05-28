@@ -7,6 +7,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.2] — 2026-05-28
+
+Sprint 1 audit fixes: CTRL_CHARS coverage, gst_rate schema correctness, dependency security.
+
+### Fixed
+
+- **`generate_invoice`: CTRL_CHARS guard extended to `from.email`, `from.phone`, `to.email`,
+  `to.phone`, and `notes`** — these fields are rendered into PDF paragraph text but were missing
+  from the control-character injection check. All rendered text fields are now covered.
+
+- **`gst_rate` enum constraint removed** — the schema previously hard-coded `[0, 5, 12, 18, 28]`
+  (Indian GST slabs) while the tool description claimed "use for any tax system (GST, VAT, sales
+  tax)". Now accepts any non-negative value up to 100 with `minimum: 0, maximum: 100`, and the
+  description lists common GST slabs as examples. Callers using 20% UK VAT or 8.25% Texas sales
+  tax no longer get a confusing enum validation error.
+
+- **Dependency audit** — `npm audit fix` resolved `fast-uri <=3.1.1` CVE (GHSA-v39h-62p7-jpjc)
+  in the production dependency chain (`@modelcontextprotocol/sdk → ajv → fast-uri`).
+
+---
+
 ## [1.5.1] — 2026-05-28
 
 Patch: `isClientError` routing robustness after v2.0.0 audit.

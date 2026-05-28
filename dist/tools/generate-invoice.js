@@ -281,8 +281,9 @@ export const generateInvoiceTool = {
                             rate: { type: 'number', description: 'Unit price' },
                             gst_rate: {
                                 type: 'number',
-                                enum: [0, 5, 12, 18, 28],
-                                description: 'GST rate %. If set, IGST is calculated.',
+                                minimum: 0,
+                                maximum: 100,
+                                description: 'Tax rate % (GST, VAT, sales tax, etc.). Common Indian GST slabs: 0, 5, 12, 18, 28. Any non-negative value up to 100 is accepted.',
                             },
                         },
                         required: ['description', 'quantity', 'rate'],
@@ -434,6 +435,23 @@ export const generateInvoiceTool = {
             }
             if (typeof args.due_date === 'string' && CTRL_CHARS.test(args.due_date)) {
                 return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'due_date must not contain newline or null characters' }) }], isError: true };
+            }
+            // Extend CTRL_CHARS to all rendered text fields — email, phone, notes are written into
+            // paragraph elements and must not carry embedded control characters (B3).
+            if (typeof fromParty.email === 'string' && CTRL_CHARS.test(fromParty.email)) {
+                return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'from.email must not contain newline or null characters' }) }], isError: true };
+            }
+            if (typeof fromParty.phone === 'string' && CTRL_CHARS.test(fromParty.phone)) {
+                return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'from.phone must not contain newline or null characters' }) }], isError: true };
+            }
+            if (typeof toParty.email === 'string' && CTRL_CHARS.test(toParty.email)) {
+                return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'to.email must not contain newline or null characters' }) }], isError: true };
+            }
+            if (typeof toParty.phone === 'string' && CTRL_CHARS.test(toParty.phone)) {
+                return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'to.phone must not contain newline or null characters' }) }], isError: true };
+            }
+            if (typeof args.notes === 'string' && CTRL_CHARS.test(args.notes)) {
+                return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'notes must not contain newline or null characters' }) }], isError: true };
             }
             const input = args;
             const invoiceNo = (input.invoice_number) || `INV-${Date.now()}-${randomBytes(3).toString('hex')}`;
