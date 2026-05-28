@@ -7,6 +7,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.0] — 2026-05-28
+
+Upgrade to `pretext-pdf` v2.0.0 (major breaking release). MCP server version bumped to `1.5.0` to signal the new peer requirement.
+
+### Breaking Changes (inherited from library v2.0.0)
+
+- **`FormFieldElement` is now a discriminated union** — Callers passing `form-field` elements must include a `fieldType` (`"text"`, `"checkbox"`, `"radio"`, `"dropdown"`, `"button"`). Elements without `fieldType` will fail validation.
+- **`spaceAbove` / `spaceBelow` removed from `hr` elements** — Use `spaceBefore` / `spaceAfter` (the canonical field names). Any documents using the old aliases will fail validation.
+- **`ValidationResult.warningCount` removed** — Check `result.errors.length` with `severity === 'warning'` filter if needed.
+
+### Added (inherited from library v2.0.0)
+
+- **`accessibilityLabel` wired to PDF `/TU` entry** — Form fields with `accessibilityLabel` now write the `/TU` (tooltip/alt-text) AcroForm annotation entry into the PDF, making screen readers announce the label.
+- **`accessibility` / `semantic` metadata wired to PDF Info dict** — Document-level accessibility and semantic metadata is now serialized as JSON strings into the PDF Info dictionary (`Accessibility` / `Semantic` keys).
+- **`./signing` subpath export** — `pretext-pdf/signing` is a new public entry point for the signing primitives (`applySignature`, `applyEncryption`, `applyPostProcessing`, `renderSignaturePlaceholder`). The signing code now lives in its own module.
+- **SVG `on*` newline-injection fix** — `sanitizeSvg` now catches event handler attributes split across a newline (e.g. `on\nload=...`), closing a bypass in the prior regex.
+- **`MAX_SVG_ELEMENTS = 5000` guard** — SVGs with more than 5000 open tags skip the sanitizer entirely (returned as-is) to prevent regex DoS on deeply nested input.
+
+### Changed
+
+- **`pretext-pdf` peer dependency** — `^1.7.0` → `^2.0.0`.
+- **`ValidationResult` and `ValidationError` fields are now `readonly`** — Callers that mutate the returned arrays will get TypeScript compile errors.
+
+---
+
 ## [1.4.18] — 2026-05-27
 
 Sync to `pretext-pdf` v1.7.1 security hotfix. HTTP status mapping hardened.
