@@ -110,17 +110,25 @@ describe('generate_invoice tool', () => {
     assert.ok(parsed.message.includes('2953'))
   })
 
-  it('generates an invoice with upi_qr_data (QR embedded in PDF)', async () => {
+  it('generates an invoice with upi_qr_data (QR embedded when qrcode dep available)', async () => {
+    // qrcode is an optional peer dep. When installed, the invoice embeds a QR code.
+    // When absent, the tool returns QR_DEP_MISSING (expected behavior, not a crash).
     const result = await generateInvoiceTool.handler({
       from: BASE_FROM,
       to: BASE_TO,
       items: [{ description: 'Consulting', quantity: 1, rate: 50000, gst_rate: 18 }],
       upi_qr_data: 'upi://pay?pa=antigravity@hdfc&pn=Antigravity+Systems&am=59000',
     })
-    assert.equal(result.isError, undefined)
     const parsed = JSON.parse(result.content[0].text as string)
-    assert.equal(parsed.success, true)
-    assert.ok(parsed.size_bytes > 1000)
+    if (result.isError) {
+      // qrcode not installed — must be a classified dependency error, not an unknown crash
+      assert.equal(parsed.error, 'QR_DEP_MISSING',
+        `Expected QR_DEP_MISSING when qrcode is not installed, got: ${parsed.error}`)
+    } else {
+      // qrcode installed — should succeed and produce a valid PDF
+      assert.equal(parsed.success, true)
+      assert.ok(parsed.size_bytes > 1000, `Expected size_bytes > 1000, got ${parsed.size_bytes}`)
+    }
   })
 
   describe('Security: prototype-pollution hardening', () => {

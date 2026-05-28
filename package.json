@@ -42,7 +42,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "pretext-pdf": "^2.0.0"
+    "pretext-pdf": "^2.0.2"
   },
   "devDependencies": {
     "@napi-rs/canvas": "^0.1.100",
