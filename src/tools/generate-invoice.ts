@@ -383,7 +383,7 @@ export const generateInvoiceTool = {
         }
       }
 
-      const items = args.items as any[]
+      const items = args.items as InvoiceItem[]
       if (!Array.isArray(items) || items.length === 0) {
         return {
           content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'items must be a non-empty array' }) }],
@@ -427,8 +427,8 @@ export const generateInvoiceTool = {
       }
 
       // Length caps on free-text fields to prevent resource exhaustion in the renderer
-      const fromParty = args.from as any
-      const toParty = args.to as any
+      const fromParty = args.from as InvoiceParty
+      const toParty = args.to as InvoiceParty
       if ((fromParty.company as string).length > 200) {
         return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'from.company must be 200 characters or fewer' }) }], isError: true }
       }

@@ -1,5 +1,5 @@
 import { render } from 'pretext-pdf'
-import type { PdfDocument } from 'pretext-pdf'
+import type { PdfDocument, ContentElement, ColumnDef } from 'pretext-pdf'
 import { toBase64 } from '../utils/base64.js'
 import { hasUnsafeKeys, runDocumentSafetyChecks } from '../utils/safety.js'
 import { assertOutputSize, MAX_REPORT_SECTIONS } from '../utils/limits.js'
@@ -27,6 +27,8 @@ const CALLOUT_COLORS: Record<string, string> = {
   note: '#6366f1',
 }
 
+const VALID_CALLOUT_STYLES = Object.keys(CALLOUT_COLORS)
+
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }
@@ -35,7 +37,7 @@ function buildReportDocument(input: ReportInput): PdfDocument {
   const includeToc = input.include_toc !== false
   const date = input.date ?? todayISO()
 
-  const content: any[] = [
+  const content: ContentElement[] = [
     // Cover block
     { type: 'spacer', height: 40 },
     {
@@ -73,7 +75,7 @@ function buildReportDocument(input: ReportInput): PdfDocument {
     spaceAfter: 6,
   })
 
-  content.push({ type: 'hr', color: '#1a1a2e', thickness: 2, spaceBelow: 40 })
+  content.push({ type: 'hr', color: '#1a1a2e', thickness: 2, spaceAfter: 40 })
 
   // TOC
   if (includeToc) {
@@ -114,7 +116,7 @@ function buildReportDocument(input: ReportInput): PdfDocument {
 
     if (section.table) {
       const { headers, rows } = section.table
-      const fracColumns = headers.map(() => ({ width: '1*' as any, align: 'left' as const }))
+      const fracColumns: Pick<ColumnDef, 'width' | 'align'>[] = headers.map(() => ({ width: '1*' as `${number}*`, align: 'left' as const }))
 
       const headerRow = {
         isHeader: true,
@@ -298,7 +300,6 @@ export const generateReportTool = {
           if (typeof (s.callout as any).text !== 'string' || (s.callout as any).text.trim() === '') {
             return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].callout.text is required and must be a non-empty string` }) }], isError: true }
           }
-          const VALID_CALLOUT_STYLES = ['info', 'warning', 'tip', 'note']
           if ((s.callout as any).style !== undefined && !VALID_CALLOUT_STYLES.includes((s.callout as any).style)) {
             return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].callout.style must be one of: info, warning, tip, note` }) }], isError: true }
           }

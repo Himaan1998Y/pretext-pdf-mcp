@@ -33,7 +33,7 @@ Inline SVG vector graphic. Either \`svg\` (inline markup string) or \`src\` (abs
 Example: \`{ type: "svg", svg: "<svg viewBox='0 0 100 100'><circle cx='50' cy='50' r='40'/></svg>", width: 100, height: 100 }\`
 
 ## code
-Monospace code block with optional syntax label. Key props: \`code\` (required), \`language\` (label only, no syntax highlighting), \`fontSize\`, \`bgColor\`, \`color\`, \`spaceAfter\`.
+Monospace code block with optional syntax highlighting. Key props: \`code\` (required), \`language\` (e.g. "typescript", "python" — enables syntax highlighting when the \`highlight.js\` peer dep is installed; used as a label otherwise), \`fontSize\`, \`bgColor\`, \`color\`, \`spaceAfter\`.
 Example: \`{ type: "code", language: "typescript", code: "const x = 42;", bgColor: "#f4f4f4" }\`
 
 ## blockquote

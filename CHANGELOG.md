@@ -7,6 +7,37 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.3] — 2026-05-28
+
+Sprint 2 audit fixes: type safety, tool schema quality, code element description.
+
+### Fixed
+
+- **`generate-report.ts`: `content` array typed as `ContentElement[]`** — was `any[]`, losing
+  type coverage across the entire document-construction block. Also fixed `spaceBelow` →
+  `spaceAfter` on the HR element (stale property name).
+
+- **`generate-report.ts`: `VALID_CALLOUT_STYLES` hoisted to module scope** — was re-allocated
+  as a new array inside every loop iteration; now derived from `Object.keys(CALLOUT_COLORS)` once.
+
+- **`generate-report.ts`: `fracColumns` typed as `Pick<ColumnDef, 'width' | 'align'>[]`** —
+  eliminates `'1*' as any` cast; `` `${number}*` `` satisfies the `ColumnDef.width` union directly.
+
+- **`generate-invoice.ts`: `args.from`/`args.to`/`args.items` typed via existing interfaces** —
+  `as any` casts replaced by `as InvoiceParty` and `as InvoiceItem[]` after structural guards
+  already confirmed the shapes.
+
+- **`generate_pdf` tool schema expanded** — Added `properties` block covering `content`,
+  `pageSize`, `margins`, `metadata`, `header`, `footer`, `defaultFont`, `fonts`, `watermark`,
+  `encryption`, and `bookmarks`. AI agents now get schema guidance without having to call
+  `list_element_types` first.
+
+- **`list-elements.ts`: `code` element description corrected** — Previously stated "no syntax
+  highlighting"; corrected to document that syntax highlighting is available when the optional
+  `highlight.js` peer dep is installed.
+
+---
+
 ## [1.5.2] — 2026-05-28
 
 Sprint 1 audit fixes: CTRL_CHARS coverage, gst_rate schema correctness, dependency security.

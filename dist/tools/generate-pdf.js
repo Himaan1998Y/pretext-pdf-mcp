@@ -11,7 +11,57 @@ export const generatePdfTool = {
             properties: {
                 document: {
                     type: 'object',
-                    description: 'A PdfDocument config object with content array and optional pageSize, margins, fonts, header, footer, watermark, encryption, etc.',
+                    description: 'A PdfDocument config object. Call list_element_types first to see available element shapes for the content array.',
+                    properties: {
+                        content: {
+                            type: 'array',
+                            description: 'Array of content elements. Each element has a "type" field — see list_element_types for all shapes.',
+                            items: { type: 'object', required: ['type'] },
+                        },
+                        pageSize: {
+                            description: 'Page size. Named: "A4" | "Letter" | "Legal" | "A3" | "A5". Or [width, height] in pt.',
+                        },
+                        margins: {
+                            type: 'object',
+                            description: 'Page margins in pt. Fields: top, bottom, left, right. Default: 72pt each.',
+                            properties: {
+                                top: { type: 'number' }, bottom: { type: 'number' },
+                                left: { type: 'number' }, right: { type: 'number' },
+                            },
+                        },
+                        metadata: {
+                            type: 'object',
+                            description: 'PDF metadata: title, author, subject, keywords (string[]), language (BCP47), creator, producer.',
+                        },
+                        header: {
+                            type: 'object',
+                            description: 'Page header. Props: text (supports {{pageNumber}}/{{totalPages}}/{{date}}/{{author}}), fontSize, color, align.',
+                        },
+                        footer: {
+                            type: 'object',
+                            description: 'Page footer. Same props as header.',
+                        },
+                        defaultFont: {
+                            type: 'string',
+                            description: 'Primary font family. Default: "Inter". Must be registered via fonts array or be a system font.',
+                        },
+                        fonts: {
+                            type: 'array',
+                            description: 'Custom font registrations. Each: { family, src (https:// or file path), weight, style }.',
+                        },
+                        watermark: {
+                            type: 'object',
+                            description: 'Background watermark. Text: { text, opacity, rotation?, color? }. Image: { image (Uint8Array), opacity }.',
+                        },
+                        encryption: {
+                            type: 'object',
+                            description: 'PDF password encryption. Props: userPassword, ownerPassword, permissions (printing, copying, modifying, annotating).',
+                        },
+                        bookmarks: {
+                            description: 'Bookmark outline from headings. true (all), false (off), or { minLevel, maxLevel }.',
+                        },
+                    },
+                    required: ['content'],
                 },
                 filename: {
                     type: 'string',

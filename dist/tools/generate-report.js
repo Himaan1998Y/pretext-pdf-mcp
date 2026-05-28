@@ -8,6 +8,7 @@ const CALLOUT_COLORS = {
     tip: '#10b981',
     note: '#6366f1',
 };
+const VALID_CALLOUT_STYLES = Object.keys(CALLOUT_COLORS);
 function todayISO() {
     return new Date().toISOString().slice(0, 10);
 }
@@ -50,7 +51,7 @@ function buildReportDocument(input) {
         align: 'center',
         spaceAfter: 6,
     });
-    content.push({ type: 'hr', color: '#1a1a2e', thickness: 2, spaceBelow: 40 });
+    content.push({ type: 'hr', color: '#1a1a2e', thickness: 2, spaceAfter: 40 });
     // TOC
     if (includeToc) {
         content.push({
@@ -262,7 +263,6 @@ export const generateReportTool = {
                     if (typeof s.callout.text !== 'string' || s.callout.text.trim() === '') {
                         return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].callout.text is required and must be a non-empty string` }) }], isError: true };
                     }
-                    const VALID_CALLOUT_STYLES = ['info', 'warning', 'tip', 'note'];
                     if (s.callout.style !== undefined && !VALID_CALLOUT_STYLES.includes(s.callout.style)) {
                         return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `sections[${i}].callout.style must be one of: info, warning, tip, note` }) }], isError: true };
                     }
