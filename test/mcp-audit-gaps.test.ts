@@ -203,10 +203,22 @@ describe('generate_invoice tool — validation edge cases', async () => {
     assert.ok((parsed.message as string).includes('JPY') || (parsed.message as string).toLowerCase().includes('currency'))
   })
 
-  it('items[0].gst_rate: 15 (invalid enum) returns VALIDATION_ERROR', async () => {
+  it('items[0].gst_rate: 15 (non-Indian slab) now accepted — schema accepts 0–100 (B4 fix)', async () => {
+    // Previously the handler hard-coded [0,5,12,18,28] and rejected 15.
+    // Since B4, any finite number in 0–100 is valid so non-Indian tax rates work.
     const result = await generateInvoiceTool.handler({
       ...BASE,
       items: [{ description: 'Service', quantity: 1, rate: 100, gst_rate: 15 as any }],
+    })
+    assert.equal(result.isError, undefined, `gst_rate:15 should succeed, got: ${result.content[0].text}`)
+    const parsed = JSON.parse(result.content[0].text as string)
+    assert.equal(parsed.success, true)
+  })
+
+  it('items[0].gst_rate: 150 (> 100) still returns VALIDATION_ERROR', async () => {
+    const result = await generateInvoiceTool.handler({
+      ...BASE,
+      items: [{ description: 'Service', quantity: 1, rate: 100, gst_rate: 150 as any }],
     })
     assert.equal(result.isError, true)
     const parsed = JSON.parse(result.content[0].text as string)

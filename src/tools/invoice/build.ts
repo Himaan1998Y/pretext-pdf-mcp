@@ -1,4 +1,4 @@
-import type { PdfDocument } from 'pretext-pdf'
+import type { PdfDocument, ContentElement, ColumnDef, TableRow, TableCell } from 'pretext-pdf'
 import { type InvoiceParty, type InvoiceItem, type InvoiceInput, type SupportedCurrency, CURRENCY_SYMBOLS, CURRENCY_LOCALES } from './types.js'
 
 // Brand colors for invoice rendering
@@ -31,14 +31,14 @@ export function buildInvoiceDocument(input: InvoiceInput, invoiceNo: string): Pd
   const hasGst = input.items.some((i: InvoiceItem) => i.gst_rate !== undefined && i.gst_rate > 0)
 
   // Build columns for line items table
-  const itemColumns: any[] = [{ width: '3*', align: 'left' }]
+  const itemColumns: ColumnDef[] = [{ width: '3*', align: 'left' }]
   if (hasHsn) itemColumns.push({ width: 70, align: 'center' })
   itemColumns.push({ width: 60, align: 'right' })
   itemColumns.push({ width: 80, align: 'right' })
   itemColumns.push({ width: 90, align: 'right' })
 
   // Header row for items table
-  const headerCells: any[] = [
+  const headerCells: TableCell[] = [
     { text: 'Description', fontWeight: 700, color: '#ffffff' },
   ]
   if (hasHsn) headerCells.push({ text: 'HSN', fontWeight: 700, color: '#ffffff' })
@@ -48,12 +48,12 @@ export function buildInvoiceDocument(input: InvoiceInput, invoiceNo: string): Pd
 
   // Data rows
   let subtotal = 0
-  const itemRows: any[] = [{ isHeader: true, cells: headerCells }]
+  const itemRows: TableRow[] = [{ isHeader: true, cells: headerCells }]
 
   for (const item of input.items) {
     const amount = item.quantity * item.rate
     subtotal += amount
-    const cells: any[] = [{ text: item.description }]
+    const cells: TableCell[] = [{ text: item.description }]
     if (hasHsn) cells.push({ text: item.hsn_code ?? '' })
     cells.push({ text: String(item.quantity) })
     cells.push({ text: formatMoney(item.rate, sym, currency) })
@@ -73,7 +73,7 @@ export function buildInvoiceDocument(input: InvoiceInput, invoiceNo: string): Pd
   const grandTotal = Math.round((subtotal + totalGst) * 100) / 100
 
   // Totals section
-  const totalsContent: any[] = [
+  const totalsContent: ContentElement[] = [
     { type: 'hr', color: '#dddddd', thickness: 0.5, spaceAfter: 6 },
     {
       type: 'paragraph',
@@ -123,7 +123,7 @@ export function buildInvoiceDocument(input: InvoiceInput, invoiceNo: string): Pd
     })
   }
 
-  const content: any[] = [
+  const content: ContentElement[] = [
     { type: 'heading', level: 1, text: input.from.company, fontSize: 22, color: INVOICE_PRIMARY_COLOR, spaceAfter: 4 },
     {
       type: 'paragraph',
