@@ -118,9 +118,16 @@ function createServer() {
             return await tool.handler(request.params.arguments ?? {});
         }
         catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
+            // Only PretextPdfError messages are intentional user-facing strings.
+            // Unknown errors may contain stack traces, OS paths, or internal details — sanitize them.
+            const safeMessage = err instanceof PretextPdfError ? err.message : 'Internal server error';
+            const errorCode = err instanceof PretextPdfError ? err.code : 'INTERNAL_ERROR';
+            if (!(err instanceof PretextPdfError)) {
+                const raw = err instanceof Error ? err.message : String(err);
+                log('error', 'unhandled tool error', { tool: request.params.name, msg: raw });
+            }
             return {
-                content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'INTERNAL_ERROR', message: msg }) }],
+                content: [{ type: 'text', text: JSON.stringify({ success: false, error: errorCode, message: safeMessage }) }],
                 isError: true,
             };
         }
