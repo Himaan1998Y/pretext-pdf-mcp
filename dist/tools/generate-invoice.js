@@ -3,233 +3,8 @@ import { render } from 'pretext-pdf';
 import { toBase64 } from '../utils/base64.js';
 import { hasUnsafeKeys, runDocumentSafetyChecks } from '../utils/safety.js';
 import { assertOutputSize } from '../utils/limits.js';
-const SUPPORTED_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'];
-// Brand colors for invoice rendering
-const INVOICE_PRIMARY_COLOR = '#1a1a2e'; // navy — headings, header bg, total accents, separators
-const INVOICE_MUTED_COLOR = '#aaaaaa'; // gray — footer text
-const CURRENCY_SYMBOLS = {
-    INR: '₹',
-    USD: '$',
-    EUR: '€',
-    GBP: '£',
-};
-const CURRENCY_LOCALES = {
-    INR: 'en-IN',
-    USD: 'en-US',
-    EUR: 'de-DE',
-    GBP: 'en-GB',
-};
-function formatMoney(amount, symbol, currency) {
-    const locale = CURRENCY_LOCALES[currency];
-    return `${symbol}${amount.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-function partyBlock(p) {
-    const lines = [p.company];
-    if (p.address)
-        lines.push(p.address);
-    if (p.gstin)
-        lines.push(`GSTIN: ${p.gstin}`);
-    if (p.email)
-        lines.push(p.email);
-    if (p.phone)
-        lines.push(p.phone);
-    return lines.join('\n');
-}
-function todayISO() {
-    return new Date().toISOString().slice(0, 10);
-}
-function buildInvoiceDocument(input, invoiceNo) {
-    const currency = input.currency ?? 'INR';
-    const sym = CURRENCY_SYMBOLS[currency];
-    const date = input.date ?? todayISO();
-    const hasHsn = input.items.some(i => i.hsn_code);
-    const hasGst = input.items.some(i => i.gst_rate !== undefined && i.gst_rate > 0);
-    // Build columns for line items table
-    const itemColumns = [{ width: '3*', align: 'left' }];
-    if (hasHsn)
-        itemColumns.push({ width: 70, align: 'center' });
-    itemColumns.push({ width: 60, align: 'right' });
-    itemColumns.push({ width: 80, align: 'right' });
-    itemColumns.push({ width: 90, align: 'right' });
-    // Header row for items table
-    const headerCells = [
-        { text: 'Description', fontWeight: 700, color: '#ffffff' },
-    ];
-    if (hasHsn)
-        headerCells.push({ text: 'HSN', fontWeight: 700, color: '#ffffff' });
-    headerCells.push({ text: 'Qty', fontWeight: 700, color: '#ffffff' });
-    headerCells.push({ text: 'Rate', fontWeight: 700, color: '#ffffff' });
-    headerCells.push({ text: 'Amount', fontWeight: 700, color: '#ffffff' });
-    // Data rows
-    let subtotal = 0;
-    const itemRows = [{ isHeader: true, cells: headerCells }];
-    for (const item of input.items) {
-        const amount = item.quantity * item.rate;
-        subtotal += amount;
-        const cells = [{ text: item.description }];
-        if (hasHsn)
-            cells.push({ text: item.hsn_code ?? '' });
-        cells.push({ text: String(item.quantity) });
-        cells.push({ text: formatMoney(item.rate, sym, currency) });
-        cells.push({ text: formatMoney(amount, sym, currency) });
-        itemRows.push({ cells });
-    }
-    // GST calculation: use IGST if inter-state (default), or CGST+SGST if intra
-    // We'll use IGST for simplicity (single tax line)
-    const totalGst = hasGst
-        ? input.items.reduce((sum, item) => {
-            const amount = item.quantity * item.rate;
-            const rate = item.gst_rate ?? 0;
-            return sum + (amount * rate) / 100;
-        }, 0)
-        : 0;
-    const grandTotal = Math.round((subtotal + totalGst) * 100) / 100;
-    // Build totals section
-    const totalsContent = [
-        { type: 'hr', color: '#dddddd', thickness: 0.5, spaceBelow: 6 },
-        {
-            type: 'paragraph',
-            text: `Subtotal:  ${formatMoney(subtotal, sym, currency)}`,
-            align: 'right',
-            spaceAfter: hasGst ? 4 : 8,
-        },
-    ];
-    if (hasGst) {
-        // Build per-rate GST breakdown
-        const rateGroups = {};
-        for (const item of input.items) {
-            if (!item.gst_rate)
-                continue;
-            const amount = item.quantity * item.rate;
-            const gst = Math.round((amount * item.gst_rate) / 100 * 100) / 100;
-            rateGroups[item.gst_rate] = Math.round(((rateGroups[item.gst_rate] ?? 0) + gst) * 100) / 100;
-        }
-        for (const [rate, gstAmt] of Object.entries(rateGroups)) {
-            totalsContent.push({
-                type: 'paragraph',
-                text: `IGST @ ${rate}%:  ${formatMoney(gstAmt, sym, currency)}`,
-                align: 'right',
-                color: '#555555',
-                spaceAfter: 4,
-            });
-        }
-        totalsContent.push({ type: 'hr', color: INVOICE_PRIMARY_COLOR, thickness: 1, spaceBelow: 6 });
-        totalsContent.push({
-            type: 'paragraph',
-            text: `GRAND TOTAL:  ${formatMoney(grandTotal, sym, currency)}`,
-            fontSize: 13,
-            fontWeight: 700,
-            color: INVOICE_PRIMARY_COLOR,
-            align: 'right',
-            spaceAfter: 16,
-        });
-    }
-    else {
-        totalsContent.push({ type: 'hr', color: INVOICE_PRIMARY_COLOR, thickness: 1, spaceBelow: 6 });
-        totalsContent.push({
-            type: 'paragraph',
-            text: `TOTAL:  ${formatMoney(grandTotal, sym, currency)}`,
-            fontSize: 13,
-            fontWeight: 700,
-            color: INVOICE_PRIMARY_COLOR,
-            align: 'right',
-            spaceAfter: 16,
-        });
-    }
-    const content = [
-        // Header: company name
-        { type: 'heading', level: 1, text: input.from.company, fontSize: 22, color: INVOICE_PRIMARY_COLOR, spaceAfter: 4 },
-        {
-            type: 'paragraph',
-            text: [input.from.address, input.from.gstin ? `GSTIN: ${input.from.gstin}` : null]
-                .filter(Boolean)
-                .join('  ·  '),
-            fontSize: 9,
-            color: '#666666',
-            spaceAfter: 2,
-        },
-        {
-            type: 'paragraph',
-            text: [input.from.email, input.from.phone].filter(Boolean).join('  ·  '),
-            fontSize: 9,
-            color: '#0070f3',
-            spaceAfter: 14,
-        },
-        { type: 'hr', color: INVOICE_PRIMARY_COLOR, thickness: 2, spaceBelow: 12 },
-        // Invoice meta
-        { type: 'heading', level: 3, text: 'INVOICE', fontSize: 16, color: INVOICE_PRIMARY_COLOR, spaceAfter: 8 },
-        {
-            type: 'table',
-            columns: [{ width: '1*' }, { width: '1*' }],
-            rows: [
-                {
-                    cells: [
-                        { text: `Invoice No.\n${invoiceNo}` },
-                        { text: `Bill To\n${partyBlock(input.to)}` },
-                    ],
-                },
-                {
-                    cells: [
-                        { text: `Date\n${date}` },
-                        { text: input.due_date ? `Due Date\n${input.due_date}` : '' },
-                    ],
-                },
-            ],
-            borderColor: '#e8e8e8',
-            borderWidth: 0.5,
-            cellPaddingH: 10,
-            cellPaddingV: 8,
-            spaceAfter: 16,
-        },
-        // Line items
-        { type: 'heading', level: 3, text: 'Services / Items', color: INVOICE_PRIMARY_COLOR, spaceAfter: 6 },
-        {
-            type: 'table',
-            columns: itemColumns,
-            rows: itemRows,
-            headerBgColor: INVOICE_PRIMARY_COLOR,
-            borderColor: '#e0e0e0',
-            borderWidth: 0.5,
-            cellPaddingH: 8,
-            cellPaddingV: 6,
-            spaceAfter: 4,
-        },
-        // Totals
-        ...totalsContent,
-    ];
-    // UPI QR code (optional)
-    if (input.upi_qr_data) {
-        content.push({ type: 'paragraph', text: 'Scan to pay via UPI:', fontSize: 9, color: '#555555', spaceAfter: 4 });
-        content.push({ type: 'qr-code', data: input.upi_qr_data, size: 72, align: 'left', spaceAfter: 8 });
-    }
-    // Notes
-    if (input.notes) {
-        content.push({ type: 'hr', color: '#e8e8e8', thickness: 0.5, spaceBelow: 10 });
-        content.push({ type: 'heading', level: 4, text: 'Notes', spaceAfter: 4 });
-        content.push({ type: 'paragraph', text: input.notes, fontSize: 10, color: '#555555', spaceAfter: 12 });
-    }
-    // Footer note
-    content.push({ type: 'hr', color: '#e8e8e8', thickness: 0.5, spaceBelow: 8 });
-    content.push({
-        type: 'paragraph',
-        text: 'Generated by pretext-pdf',
-        fontSize: 8,
-        color: INVOICE_MUTED_COLOR,
-        align: 'center',
-    });
-    return {
-        pageSize: 'A4',
-        margins: { top: 50, bottom: 50, left: 56, right: 56 },
-        defaultFontSize: 10,
-        footer: {
-            text: `Invoice ${invoiceNo}  ·  Page {{pageNumber}} of {{totalPages}}`,
-            fontSize: 8,
-            color: INVOICE_MUTED_COLOR,
-            align: 'center',
-        },
-        content,
-    };
-}
+import { SUPPORTED_CURRENCIES } from './invoice/types.js';
+import { buildInvoiceDocument } from './invoice/build.js';
 export const generateInvoiceTool = {
     schema: {
         name: 'generate_invoice',
@@ -298,57 +73,31 @@ export const generateInvoiceTool = {
     },
     handler: async (args) => {
         try {
-            // Early guard: catch __proto__ / constructor / prototype pollution before
-            // iterating field values below. The constructed `doc` cannot carry
-            // pollution from args (we build it ourselves), but a polluted args object
-            // could crash the field accessors (`args.from`, `items[i].quantity`, etc.)
-            // or alter the prototype chain mid-validation. A second
-            // `runDocumentSafetyChecks(doc)` call later validates the *built* doc as
-            // defence-in-depth against any future builder drift.
             if (hasUnsafeKeys(args)) {
                 return {
                     content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'Input contains unsafe keys (__proto__, constructor, prototype)' }) }],
                     isError: true,
                 };
             }
-            // C5: validate from/to are objects with required company string
             if (!args.from || typeof args.from !== 'object' || typeof args.from.company !== 'string') {
-                return {
-                    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'from.company is required and must be a string' }) }],
-                    isError: true,
-                };
+                return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'from.company is required and must be a string' }) }], isError: true };
             }
             if (!args.to || typeof args.to !== 'object' || typeof args.to.company !== 'string') {
-                return {
-                    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'to.company is required and must be a string' }) }],
-                    isError: true,
-                };
+                return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'to.company is required and must be a string' }) }], isError: true };
             }
-            // C3: validate currency before buildInvoiceDocument uses it
             const rawCurrency = args.currency ?? 'INR';
             if (!SUPPORTED_CURRENCIES.includes(rawCurrency)) {
-                return {
-                    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `Unsupported currency: ${rawCurrency}. Supported: ${SUPPORTED_CURRENCIES.join(', ')}` }) }],
-                    isError: true,
-                };
+                return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `Unsupported currency: ${rawCurrency}. Supported: ${SUPPORTED_CURRENCIES.join(', ')}` }) }], isError: true };
             }
             const items = args.items;
             if (!Array.isArray(items) || items.length === 0) {
-                return {
-                    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'items must be a non-empty array' }) }],
-                    isError: true,
-                };
+                return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'items must be a non-empty array' }) }], isError: true };
             }
             if (items.length > 500) {
-                return {
-                    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'items must have 500 or fewer entries' }) }],
-                    isError: true,
-                };
+                return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'items must have 500 or fewer entries' }) }], isError: true };
             }
-            // Control-character regex — defined here so it's available in the items loop below
-            // and in the party field checks further down.
+            // Control-character regex — available for items loop and party field checks below
             const CTRL_CHARS = /[\n\r\x00]/;
-            // C4: validate each item's numeric fields to prevent NaN/Infinity in financial calculations
             for (let i = 0; i < items.length; i++) {
                 const item = items[i];
                 if (!item || typeof item !== 'object') {
@@ -379,7 +128,6 @@ export const generateInvoiceTool = {
                     return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: `items[${i}].description must be 500 characters or fewer` }) }], isError: true };
                 }
             }
-            // Length caps on free-text fields to prevent resource exhaustion in the renderer
             const fromParty = args.from;
             const toParty = args.to;
             if (fromParty.company.length > 200) {
@@ -400,7 +148,6 @@ export const generateInvoiceTool = {
             if (typeof args.upi_qr_data === 'string' && args.upi_qr_data.length > 2953) {
                 return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'upi_qr_data must be 2953 characters or fewer (QR code capacity limit)' }) }], isError: true };
             }
-            // Additional length caps + CTRL_CHARS for optional party fields rendered into PDF
             if (typeof fromParty.gstin === 'string' && fromParty.gstin.length > 20) {
                 return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'from.gstin must be 20 characters or fewer' }) }], isError: true };
             }
@@ -425,8 +172,6 @@ export const generateInvoiceTool = {
             if (typeof toParty.phone === 'string' && toParty.phone.length > 20) {
                 return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'to.phone must be 20 characters or fewer' }) }], isError: true };
             }
-            // Control-character guard: covers all rendered text fields
-            // (CTRL_CHARS is also used in the items loop above — declaration hoisted here)
             if (CTRL_CHARS.test(fromParty.company)) {
                 return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'from.company must not contain newline or null characters' }) }], isError: true };
             }
@@ -448,8 +193,6 @@ export const generateInvoiceTool = {
             if (typeof args.due_date === 'string' && CTRL_CHARS.test(args.due_date)) {
                 return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'due_date must not contain newline or null characters' }) }], isError: true };
             }
-            // Extend CTRL_CHARS to all rendered text fields — email, phone, notes are written into
-            // paragraph elements and must not carry embedded control characters (B3).
             if (typeof fromParty.email === 'string' && CTRL_CHARS.test(fromParty.email)) {
                 return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'VALIDATION_ERROR', message: 'from.email must not contain newline or null characters' }) }], isError: true };
             }
@@ -468,9 +211,6 @@ export const generateInvoiceTool = {
             const input = args;
             const invoiceNo = (input.invoice_number) || `INV-${Date.now()}-${randomBytes(3).toString('hex')}`;
             const doc = buildInvoiceDocument(input, invoiceNo);
-            // Defence-in-depth: validate the built doc structurally. Catches any
-            // future drift where buildInvoiceDocument emits an element shape that
-            // pretext-pdf's renderer would reject mid-render.
             const safetyError = runDocumentSafetyChecks(doc);
             if (safetyError)
                 return safetyError;
@@ -480,10 +220,7 @@ export const generateInvoiceTool = {
             const filename = (args.filename || `invoice-${invoiceNo}`) + '.pdf';
             return {
                 content: [
-                    {
-                        type: 'text',
-                        text: JSON.stringify({ success: true, base64, filename, size_bytes: bytes.length }),
-                    },
+                    { type: 'text', text: JSON.stringify({ success: true, base64, filename, size_bytes: bytes.length }) },
                 ],
             };
         }
@@ -495,10 +232,7 @@ export const generateInvoiceTool = {
             }
             return {
                 content: [
-                    {
-                        type: 'text',
-                        text: JSON.stringify({ success: false, error: e.code ?? 'UNKNOWN_ERROR', message }),
-                    },
+                    { type: 'text', text: JSON.stringify({ success: false, error: e.code ?? 'UNKNOWN_ERROR', message }) },
                 ],
                 isError: true,
             };

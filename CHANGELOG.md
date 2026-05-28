@@ -7,6 +7,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.6] — 2026-05-28
+
+Sprint 4: Split `generate-invoice.ts` (562 LOC) into focused `invoice/` submodules.
+
+### Changed
+
+- **`src/tools/generate-invoice.ts` split into `invoice/` submodules** — The 562-line file is
+  refactored into three focused files:
+  - `invoice/types.ts` (46L) — `InvoiceParty`, `InvoiceItem`, `InvoiceInput` interfaces + `SUPPORTED_CURRENCIES`, `CURRENCY_SYMBOLS`, `CURRENCY_LOCALES` constants
+  - `invoice/build.ts` (216L) — `formatMoney`, `partyBlock`, `todayISO`, and `buildInvoiceDocument` (the document-construction logic)
+  - `generate-invoice.ts` (252L) — MCP schema + validation handler only (imports from `invoice/`)
+  Also fixed latent `spaceBelow` → `spaceAfter` bug in the totals section HR elements (type-checked now that content array is typed).
+  The public `generateInvoiceTool` export is unchanged.
+
+---
+
 ## [1.5.5] — 2026-05-28
 
 Post-sprint audit fixes: CRITICAL gst_rate handler, CTRL_CHARS completeness, SSRF guard.
