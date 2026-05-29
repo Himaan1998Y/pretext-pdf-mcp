@@ -7,6 +7,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.9] — 2026-05-29
+
+Handler validation test coverage and report-build edge case tests.
+
+### Tests Added
+
+- `test/generate-report-handler.test.ts` — 13 handler-level unit tests covering all validation paths: missing title, empty sections, invalid callout style, unsafe keys (`__proto__`), response shape contract on both error and success paths (H-2)
+- `test/report-build.test.ts` — 7 new tests: table + callout coexistence and render order (TG-5); empty body, whitespace-only body, date-omitted default, `include_toc` flag behaviour (TG-6)
+
 ## [1.5.8] — 2026-05-29
 
 Sprint 5A: generate-report.ts type safety, buildReportDocument unit tests.

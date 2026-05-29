@@ -185,3 +185,97 @@ describe('buildReportDocument — section rendering', () => {
     assert.ok(allText.includes('2026-05-29'), 'date not found in content')
   })
 })
+
+// ─── TG-5: table + callout coexistence ───────────────────────────────────────
+
+describe('buildReportDocument — table + callout coexistence (TG-5)', () => {
+  it('section with both table and callout produces both elements in correct order', () => {
+    const doc = buildReportDocument({
+      title: 'Report',
+      sections: [{
+        heading: 'Data Section',
+        body: 'See below.',
+        table: { headers: ['Col A', 'Col B'], rows: [['v1', 'v2']] },
+        callout: { style: 'info', text: 'Note: review this data.' },
+      }],
+    })
+    const headingIdx = (doc.content as any[]).findIndex(
+      (el: any) => el.type === 'heading' && el.text === 'Data Section'
+    )
+    assert.ok(headingIdx >= 0, 'section heading not found')
+    const afterHeading = (doc.content as any[]).slice(headingIdx + 1)
+    const tableIdx = afterHeading.findIndex((el: any) => el.type === 'table')
+    const calloutIdx = afterHeading.findIndex((el: any) => el.type === 'callout')
+    assert.ok(tableIdx >= 0, 'table element not found after heading')
+    assert.ok(calloutIdx >= 0, 'callout element not found after heading')
+    assert.ok(tableIdx < calloutIdx, `table (${tableIdx}) must precede callout (${calloutIdx})`)
+  })
+
+  it('callout content and style are preserved', () => {
+    const doc = buildReportDocument({
+      title: 'R',
+      sections: [{
+        heading: 'H',
+        body: 'B',
+        callout: { style: 'warning', text: 'Watch out!' },
+      }],
+    })
+    const callout = (doc.content as any[]).find((el: any) => el.type === 'callout')
+    assert.ok(callout, 'callout not found')
+    assert.strictEqual(callout.style, 'warning')
+    assert.strictEqual(callout.content, 'Watch out!')
+  })
+})
+
+// ─── TG-6: edge cases ─────────────────────────────────────────────────────────
+
+describe('buildReportDocument — edge cases (TG-6)', () => {
+  it('section with empty body produces no paragraph for that body', () => {
+    const doc = buildReportDocument({
+      title: 'R',
+      sections: [{ heading: 'H', body: '' }],
+    })
+    const headingIdx = (doc.content as any[]).findIndex((el: any) => el.type === 'heading' && el.text === 'H')
+    assert.ok(headingIdx >= 0, 'heading not found')
+    // Next non-page-break element after heading (if any) must not be a paragraph with empty text
+    const afterHeading = (doc.content as any[]).slice(headingIdx + 1)
+    const emptyPara = afterHeading.find((el: any) => el.type === 'paragraph' && (el.text ?? '').trim() === '')
+    assert.strictEqual(emptyPara, undefined, 'empty body should not produce an empty paragraph')
+  })
+
+  it('section with whitespace-only body produces no paragraph', () => {
+    const doc = buildReportDocument({
+      title: 'R',
+      sections: [{ heading: 'H', body: '   \n  \n   ' }],
+    })
+    const headingIdx = (doc.content as any[]).findIndex((el: any) => el.type === 'heading' && el.text === 'H')
+    assert.ok(headingIdx >= 0)
+    const afterHeading = (doc.content as any[]).slice(headingIdx + 1)
+    const whitespacePara = afterHeading.find(
+      (el: any) => el.type === 'paragraph' && (el.text ?? '').trim() === ''
+    )
+    assert.strictEqual(whitespacePara, undefined, 'whitespace-only body should not produce an empty paragraph')
+  })
+
+  it('buildReportDocument without date still emits an ISO date string in content', () => {
+    const doc = buildReportDocument({ title: 'R', sections: [{ heading: 'H', body: 'B' }] })
+    const allText = JSON.stringify(doc.content)
+    assert.ok(/\d{4}-\d{2}-\d{2}/.test(allText), 'no ISO date found in content when date omitted')
+  })
+
+  it('include_toc: false omits the TOC element', () => {
+    const doc = buildReportDocument({
+      title: 'R',
+      include_toc: false,
+      sections: [{ heading: 'H', body: 'B' }],
+    })
+    const hasToc = (doc.content as any[]).some((el: any) => el.type === 'toc')
+    assert.strictEqual(hasToc, false, 'TOC should be absent when include_toc: false')
+  })
+
+  it('include_toc undefined (default) includes the TOC element', () => {
+    const doc = buildReportDocument({ title: 'R', sections: [{ heading: 'H', body: 'B' }] })
+    const hasToc = (doc.content as any[]).some((el: any) => el.type === 'toc')
+    assert.strictEqual(hasToc, true, 'TOC should be present by default')
+  })
+})
