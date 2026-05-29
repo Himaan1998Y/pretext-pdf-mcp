@@ -7,6 +7,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.10] — 2026-05-29
+
+Security hardening, tsconfig tightening, and test coverage improvements from final review pass.
+
+### Security
+
+- **Error messages sanitized before returning to MCP caller** — All four tool handlers (`generate_pdf`, `generate_invoice`, `generate_report`, `generate_from_markdown`) now return `"Internal error — see server logs for details"` for non-`PretextPdfError` exceptions. Raw `err.message` from unknown third-party or runtime errors (which may contain internal paths or socket details) is written to `process.stderr` only (F-2).
+
+### Changed
+
+- **`tsconfig.json` hardened** — Added `noUncheckedIndexedAccess`, `noUnusedLocals`, `noUnusedParameters` alongside the existing `strict: true`. (`exactOptionalPropertyTypes` was evaluated but skipped — incompatible with `@modelcontextprotocol/sdk` transport types.)
+
+### Tests Added
+
+- `test/safety.test.ts` — 39 tests covering `hasUnsafeKeys` (depth limits, array walking, prototype key variants) and `runDocumentSafetyChecks` (response envelope shape, error cases).
+- `test/base64.test.ts` — 10 tests covering `toBase64` (Buffer, Uint8Array, empty input, large payload, round-trip contract).
+
+---
+
 ## [1.5.9] — 2026-05-29
 
 Handler validation test coverage and report-build edge case tests.

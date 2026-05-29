@@ -115,6 +115,7 @@ export const generatePdfTool = {
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string }
       const message = err instanceof Error ? err.message : String(err)
+      const safeMessage = e.code ? message : 'Internal error — see server logs for details'
       if (!(err instanceof Error) || !e.code) {
         process.stderr.write(JSON.stringify({ ts: new Date().toISOString(), level: 'error', tool: 'generate_pdf', msg: message }) + '\n')
       }
@@ -122,7 +123,7 @@ export const generatePdfTool = {
         content: [
           {
             type: 'text',
-            text: JSON.stringify({ success: false, error: e.code ?? 'UNKNOWN_ERROR', message }),
+            text: JSON.stringify({ success: false, error: e.code ?? 'UNKNOWN_ERROR', message: safeMessage }),
           },
         ],
         isError: true,
