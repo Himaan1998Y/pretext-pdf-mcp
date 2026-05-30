@@ -7,6 +7,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.11] — 2026-05-30
+
+### Changed
+
+- **pretext-pdf dependency updated to v2.0.14**, which vendors pretext v0.0.7-patched.1.
+  Users get improved text layout: better CJK/mixed-script handling, punctuation wrapping improvements, symbol handling enhancements, and performance optimizations from upstream v0.0.7.
+
+---
+
 ## [1.5.10] — 2026-05-29
 
 Security hardening, tsconfig tightening, and test coverage improvements from final review pass.
