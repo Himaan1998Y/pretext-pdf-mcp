@@ -7,6 +7,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.12] — 2026-06-01
+
+### Changed
+
+- **pretext-pdf dependency updated to v2.1.0**, which includes developer experience improvements: auto-coercion for intuitive-but-incorrect patterns (string list items, font objects, pdfmake table structures), better error messages with structure hints, and callout field deprecation warning for v3.0 migration.
+  AI agents using this MCP now get automatic pattern guidance and clearer validation feedback without manual schema expertise.
+
+---
+
 ## [1.5.11] — 2026-05-30
 
 ### Changed
